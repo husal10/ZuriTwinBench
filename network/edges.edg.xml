@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    edges.edg.xml — Zurich Four-Leg Intersection
+    Genser et al. (2023), Data in Brief 48, 109117
+
+    Speeds  : N/S = 8.333 m/s (30 km/h) | E/W = 13.889 m/s (50 km/h)
+    Lanes   : N_in/N_out=2, S_in/S_out=2, E_in/E_out=2, W_in=1, W_out=2
+    (Swiss SN 640 201a; lane widths 3.5m — Assumption A2)
+
+    Lane assignments calibrated to match downstream detectors D8/D9/D10:
+      D9 (W_out lane 0): E→W through traffic   (calibrated ~2137 veh/day)
+      D10 (W_out lane 1): N→W + S→W turns     (calibrated ~857 veh/day)
+      D8 (S_out lane 0): N→S through traffic   (calibrated ~287 veh/day)
+
+    Tram edges: dedicated rail_urban edges (N/S axis only; tram lines VBZ)
+      Track width = VBZ standard gauge 1000mm metric gauge (Cobra Be 5/6)
+      Speed limited to 30 km/h at this intersection
+
+    Pedestrian crossing edges: 4 zebra crossings (Fig.3)
+      width=4.0m, speed=1.4 m/s (HCM 6th Edition walking speed)
+-->
+<edges>
+
+    <!-- ── N/S vehicle edges (mixed MPT + Bike, 2 lanes each) ───── -->
+    <edge id="N_in"  from="N_src" to="C"     numLanes="2" speed="8.3333" spreadType="right"/>
+    <edge id="N_out" from="C"     to="N_src" numLanes="2" speed="8.3333" spreadType="right"/>
+    <edge id="S_in"  from="S_src" to="C"     numLanes="2" speed="8.3333" spreadType="right"/>
+    <edge id="S_out" from="C"     to="S_src" numLanes="2" speed="8.3333" spreadType="right"/>
+
+    <!-- ── N/S dedicated tram edges (rail_urban, separate tracks) ─ -->
+    <!-- Tram lines overlay N/S road per Fig.3 (dashed tram tracks) -->
+    <edge id="N_tram_in"  from="N_src" to="C"     numLanes="1" speed="8.3333" allow="rail_urban" spreadType="right"/>
+    <edge id="N_tram_out" from="C"     to="N_src" numLanes="1" speed="8.3333" allow="rail_urban" spreadType="right"/>
+    <edge id="S_tram_in"  from="S_src" to="C"     numLanes="1" speed="8.3333" allow="rail_urban" spreadType="right"/>
+    <edge id="S_tram_out" from="C"     to="S_src" numLanes="1" speed="8.3333" allow="rail_urban" spreadType="right"/>
+
+    <!-- ── E/W vehicle edges ─────────────────────────────────────── -->
+    <!-- E_in lane 0: E→W through (sg4)  | lane 1: E→N left turn (sg5) -->
+    <edge id="E_in"  from="E_src" to="C"     numLanes="2" speed="13.8889" spreadType="right"/>
+    <edge id="E_out" from="C"     to="E_src" numLanes="2" speed="13.8889" spreadType="right"/>
+    <!-- W_in: single lane, W→E straight only (sg1 only — no turns per Table 1) -->
+    <edge id="W_in"  from="W_src" to="C"     numLanes="1" speed="13.8889" spreadType="right"/>
+    <!-- W_out lane 0: E→W through (D9) | lane 1: N→W+S→W turns (D10) -->
+    <edge id="W_out" from="C"     to="W_src" numLanes="2" speed="13.8889" spreadType="right"/>
+
+    <!-- ── Pedestrian crossing edges (allowed=pedestrian only) ───── -->
+    <!-- sg7: N/S crossing, WEST side -->
+    <edge id="ped_sg7_in"  from="ped_sg7_n" to="ped_sg7_s" numLanes="1" speed="1.4" allow="pedestrian" width="4.0"/>
+    <edge id="ped_sg7_out" from="ped_sg7_s" to="ped_sg7_n" numLanes="1" speed="1.4" allow="pedestrian" width="4.0"/>
+    <!-- sg8: E/W crossing, NORTH side -->
+    <edge id="ped_sg8_in"  from="ped_sg8_w" to="ped_sg8_e" numLanes="1" speed="1.4" allow="pedestrian" width="4.0"/>
+    <edge id="ped_sg8_out" from="ped_sg8_e" to="ped_sg8_w" numLanes="1" speed="1.4" allow="pedestrian" width="4.0"/>
+    <!-- sg9: N/S crossing, EAST side -->
+    <edge id="ped_sg9_in"  from="ped_sg9_s" to="ped_sg9_n" numLanes="1" speed="1.4" allow="pedestrian" width="4.0"/>
+    <edge id="ped_sg9_out" from="ped_sg9_n" to="ped_sg9_s" numLanes="1" speed="1.4" allow="pedestrian" width="4.0"/>
+    <!-- sg10: E/W crossing, SOUTH side -->
+    <edge id="ped_sg10_in"  from="ped_sg10_w" to="ped_sg10_e" numLanes="1" speed="1.4" allow="pedestrian" width="4.0"/>
+    <edge id="ped_sg10_out" from="ped_sg10_e" to="ped_sg10_w" numLanes="1" speed="1.4" allow="pedestrian" width="4.0"/>
+
+</edges>

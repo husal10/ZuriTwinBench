@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    nodes.nod.xml — Zurich Four-Leg Intersection
+    Genser et al. (2023), Data in Brief 48, 109117
+
+    Coordinate system: centred at junction C = (0,0)
+    ARM_LENGTH = 250m from centre to source/sink nodes
+    (must exceed 220m to place D1 correctly per Table 2)
+
+    Speeds: N/S = 30 km/h, E/W = 50 km/h (stated in paper §1.1)
+    Lane widths: 3.5m per lane (Swiss SN 640 201a standard — Assumption A2)
+
+    Pedestrian crossing nodes: 4 zebra crossings, one per arm corner (Fig.3, Table 1)
+      sg7  = N/S crossing WEST side  (y-direction span, x=-12m)
+      sg8  = E/W crossing NORTH side (x-direction span, y=+12m)
+      sg9  = N/S crossing EAST side  (y-direction span, x=+12m)
+      sg10 = E/W crossing SOUTH side (x-direction span, y=-12m)
+    Crossing setback = 12m from centre; span = 20m (±10m from crossing axis)
+-->
+<nodes>
+
+    <!-- ── Central junction ──────────────────────────────────────────── -->
+    <!-- TL_C controls all vehicle and pedestrian movements -->
+    <node id="C" x="0.0" y="0.0" type="traffic_light" tl="TL_C"/>
+
+    <!-- ── Arm endpoint nodes (source / sink) ──────────────────────── -->
+    <node id="N_src" x="0.0"    y="250.0"  type="priority"/>
+    <node id="S_src" x="0.0"    y="-250.0" type="priority"/>
+    <node id="E_src" x="250.0"  y="0.0"    type="priority"/>
+    <node id="W_src" x="-250.0" y="0.0"    type="priority"/>
+
+    <!-- ── Pedestrian crossing nodes ─────────────────────────────── -->
+    <!-- sg7: N/S crossing, WEST side (x=-12m, spans y=-10..+10m) -->
+    <node id="ped_sg7_n" x="-12.0" y="10.0"  type="priority"/>
+    <node id="ped_sg7_s" x="-12.0" y="-10.0" type="priority"/>
+
+    <!-- sg8: E/W crossing, NORTH side (y=+12m, spans x=-10..+10m) -->
+    <node id="ped_sg8_w" x="-10.0" y="12.0"  type="priority"/>
+    <node id="ped_sg8_e" x="10.0"  y="12.0"  type="priority"/>
+
+    <!-- sg9: N/S crossing, EAST side (x=+12m, spans y=-10..+10m) -->
+    <node id="ped_sg9_s" x="12.0"  y="-10.0" type="priority"/>
+    <node id="ped_sg9_n" x="12.0"  y="10.0"  type="priority"/>
+
+    <!-- sg10: E/W crossing, SOUTH side (y=-12m, spans x=-10..+10m) -->
+    <node id="ped_sg10_w" x="-10.0" y="-12.0" type="priority"/>
+    <node id="ped_sg10_e" x="10.0"  y="-12.0" type="priority"/>
+
+</nodes>

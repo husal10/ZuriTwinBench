@@ -1,0 +1,64 @@
+name: Validate Calibration
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: pip install pandas numpy matplotlib
+
+      - name: Run GEH evaluator (no figures, uses pre-built detector outputs)
+        run: python calibration/geh_evaluator.py --no-figures
+
+      - name: Enforce DfT WebTAG M3.1 acceptance criterion (>= 85% GEH < 5.0)
+        run: |
+          python - << 'PYEOF'
+          import pandas as pd, sys
+
+          df = pd.read_csv("calibration/validation_report.csv")
+          scorable = df[df["informational"].astype(str).str.lower() == "false"]
+
+          n_total = len(scorable)
+          n_pass  = int((scorable["geh_daily"] < 5.0).sum())
+          pct     = n_pass / n_total * 100
+
+          print(f"\n  DfT WebTAG M3.1 — GEH < 5.0 acceptance check")
+          print(f"  Detectors scored : {n_total}")
+          print(f"  Detectors passing: {n_pass}")
+          print(f"  Pass rate        : {pct:.1f}%  (threshold >= 85.0%)")
+          print()
+
+          for _, row in scorable.iterrows():
+              flag = "PASS" if row["geh_daily"] < 5.0 else "FAIL"
+              print(f"    {row['detector'].upper():<5}  GEH = {row['geh_daily']:.3f}  [{flag}]")
+
+          print()
+          if pct < 85.0:
+              print(f"  BLOCKED: {pct:.1f}% is below the 85% merge threshold.")
+              sys.exit(1)
+
+          print(f"  ACCEPTED: {pct:.1f}% >= 85% — calibration criterion met.")
+          sys.exit(0)
+          PYEOF
+
+      - name: Upload validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-report
+          path: calibration/validation_report.csv

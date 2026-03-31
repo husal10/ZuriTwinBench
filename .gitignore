@@ -1,0 +1,30 @@
+# ── SUMO large output logs (not detector files) ───────────────────────────────
+simulation/output/tripinfo*.xml
+simulation/output/summary*.xml
+simulation/output/queues*.xml
+simulation/output/statistics*.xml
+simulation/output/cal_*.xml
+benchmark/output/
+
+# ── SUMO GUI settings ─────────────────────────────────────────────────────────
+*.settings.xml
+*.view.xml
+*.bak
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# ── OS and editor ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

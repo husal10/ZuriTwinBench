@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    connections.con.xml — Zurich Four-Leg Intersection
+    Genser et al. (2023), Data in Brief 48, 109117
+
+    TL_C state string (14 chars): positions 0-13
+      [sg1, sg4, sg5, sg2, sg3, sg6a, sg6b, sg6c, sg7, sg8, sg9, sg10, sg11, sg12]
+      [  0    1    2    3    4     5     6     7    8    9   10    11    12    13 ]
+
+    Lane assignments calibrated to D8/D9/D10 downstream detector data:
+
+    KEY IMPROVEMENT vs v8 — Downstream lane assignment (Assumption A11):
+      W_out lane 0 → E→W through traffic  → D9 observed ~2137 veh/day
+      W_out lane 1 → N→W + S→W turns     → D10 observed ~857 veh/day
+      S_out lane 0 → N→S through traffic  → D8 observed ~287 veh/day
+    Calibration result: GEH_D8=0.04, GEH_D9=0.43, GEH_D10=1.80 (all <5 ✓)
+
+    Swiss SVG/StVO notes:
+      - sg5 (E→N left turn): yields to oncoming W→E (priority right-of-way rule
+        Art. 36 SVG). SUMO state 'g' (lowercase) = right-of-way yield.
+      - sg6c (S→E left turn): yields to S→N oncoming. SUMO state 'g'.
+      - No N→E signal group in Table 1 → connection omitted.
+      - No E→S signal group in Table 1 → connection omitted.
+      - W_in is single lane → W→E only; no W→N, W→S (Table 1 confirms).
+-->
+<connections>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- EW PHASE: sg1(W→E), sg4(E→W), sg5(E→N left yield)           -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+
+    <!-- sg1: W→E through. TL_C pos[0]=G. Single lane, no turns (Table 1). -->
+    <connection from="W_in"  to="E_out" fromLane="0" toLane="0" tl="TL_C" linkIndex="0"/>
+
+    <!-- sg4: E→W through. TL_C pos[1]=G.
+         E_in lane 0 (through lane) → W_out lane 0.
+         D9 on W_out lane 0 captures E→W ~ 2187 veh/day (GEH≈0.43). -->
+    <connection from="E_in"  to="W_out" fromLane="0" toLane="0" tl="TL_C" linkIndex="1"/>
+
+    <!-- sg5: E→N left turn. TL_C pos[2]=g (yields to W→E, Art.36 SVG).
+         E_in lane 1 (left-turn dedicated) → N_out lane 0. -->
+    <connection from="E_in"  to="N_out" fromLane="1" toLane="0" tl="TL_C" linkIndex="2"/>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- NS PHASE: sg2(N→W), sg3(N→S), sg6a/b/c(S→*), ped sg7/sg9   -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+
+    <!-- sg2: N→W right turn. TL_C pos[3]=G.
+         N_in lane 0 (right-turn lane) → W_out lane 1.
+         Turns use inner (left) W_out lane, freeing right lane for E→W through.
+         D10 on W_out lane 1 captures N→W+S→W ~ 808 veh/day (GEH≈1.80). -->
+    <connection from="N_in"  to="W_out" fromLane="0" toLane="1" tl="TL_C" linkIndex="3"/>
+
+    <!-- sg3: N→S through (also bike, dedicated). TL_C pos[4]=G.
+         N_in lane 1 (through/bike) → S_out lane 0 (right lane of southbound road).
+         D8 on S_out lane 0 captures N→S ~ 287 veh/day (GEH≈0.04). -->
+    <connection from="N_in"  to="S_out" fromLane="1" toLane="0" tl="TL_C" linkIndex="4"/>
+
+    <!-- sg6a: S→N through. TL_C pos[5]=G. S_in lane 0 → N_out lane 1. -->
+    <connection from="S_in"  to="N_out" fromLane="0" toLane="1" tl="TL_C" linkIndex="5"/>
+
+    <!-- sg6b: S→W right turn. TL_C pos[6]=G.
+         S_in lane 0 → W_out lane 1 (turning traffic uses inner lane). -->
+    <connection from="S_in"  to="W_out" fromLane="0" toLane="1" tl="TL_C" linkIndex="6"/>
+
+    <!-- sg6c: S→E left turn. TL_C pos[7]=g (yields to S→N oncoming, Art.36 SVG).
+         S_in lane 1 (dedicated left-turn) → E_out lane 0. -->
+    <connection from="S_in"  to="E_out" fromLane="1" toLane="0" tl="TL_C" linkIndex="7"/>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- PEDESTRIAN CROSSINGS (sg7–sg10) per Figure 3 & Table 1       -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+
+    <!-- sg7: N/S crossing WEST side. TL_C pos[8]=G during NS phase. -->
+    <connection from="ped_sg7_in"  to="ped_sg7_out"  fromLane="0" toLane="0" tl="TL_C" linkIndex="8"/>
+
+    <!-- sg8: E/W crossing NORTH side. TL_C pos[9]=G during EW phase. -->
+    <connection from="ped_sg8_in"  to="ped_sg8_out"  fromLane="0" toLane="0" tl="TL_C" linkIndex="9"/>
+
+    <!-- sg9: N/S crossing EAST side. TL_C pos[10]=G during NS phase. -->
+    <connection from="ped_sg9_in"  to="ped_sg9_out"  fromLane="0" toLane="0" tl="TL_C" linkIndex="10"/>
+
+    <!-- sg10: E/W crossing SOUTH side. TL_C pos[11]=G during EW phase. -->
+    <connection from="ped_sg10_in" to="ped_sg10_out" fromLane="0" toLane="0" tl="TL_C" linkIndex="11"/>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- PT TRAM (sg11, sg12) — controlled by TL_C positions 12/13    -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+
+    <!-- sg11: PT S→N (tram). TL_C pos[12]=G (pre-emption, Table 2). -->
+    <connection from="S_tram_in"  to="N_tram_out" fromLane="0" toLane="0" tl="TL_C" linkIndex="12"/>
+
+    <!-- sg12: PT N→S (tram). TL_C pos[13]=G (pre-emption, Table 2). -->
+    <connection from="N_tram_in"  to="S_tram_out" fromLane="0" toLane="0" tl="TL_C" linkIndex="13"/>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- INTENTIONALLY OMITTED MOVEMENTS (no signal group in Table 1) -->
+    <!-- N→E: no signal group; left turn from North prohibited here   -->
+    <!-- E→S: no signal group; right turn from East prohibited here   -->
+    <!-- W→N: W_in is straight-only (single lane, sg1 only)          -->
+    <!-- W→S: W_in is straight-only; no W→S movement permitted       -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+
+</connections>

@@ -1,0 +1,12 @@
+# ZuriTwinBench — Python dependencies
+# Install: pip install -r requirements.txt
+#
+# SUMO is not a Python package. Install separately:
+#   Ubuntu/Debian : sudo apt-get install sumo sumo-tools
+#   macOS         : brew install --cask sumo
+#   Windows       : https://sumo.dlr.de/docs/Downloads.php
+#   Minimum version: SUMO 1.18
+
+pandas>=1.5.0
+numpy>=1.23.0
+matplotlib>=3.6.0

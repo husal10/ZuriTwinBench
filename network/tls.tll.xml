@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    tls.tll.xml — Zurich Four-Leg Intersection TL Logic
+    Genser et al. (2023), Data in Brief 48, 109117
+
+    Two programs for TL_C:
+      "day"   — actuated (type="actuated"); timing calibrated from feb04_only.csv
+      "night" — static flashing amber (Swiss Gelbblinker, SVG §68); active 01:00:54–05:00:00
+
+    State string (14 chars) — position map:
+      [0]  sg1  = W→E    through     (EW phase, main vehicle)
+      [1]  sg4  = E→W    through     (EW phase, main vehicle)
+      [2]  sg5  = E→N    left-yield  (EW phase, lowercase g = yield, Art.36 SVG)
+      [3]  sg2  = N→W    right turn  (NS phase)
+      [4]  sg3  = N→S    through+bike(NS phase)
+      [5]  sg6a = S→N    through     (NS phase)
+      [6]  sg6b = S→W    right turn  (NS phase)
+      [7]  sg6c = S→E    left-yield  (NS phase, lowercase g = yield)
+      [8]  sg7  = ped NS (W-side)    (NS phase, pedestrian crossing)
+      [9]  sg8  = ped EW (N-side)    (EW phase, pedestrian crossing)
+      [10] sg9  = ped NS (E-side)    (NS phase, pedestrian crossing)
+      [11] sg10 = ped EW (S-side)    (EW phase, pedestrian crossing)
+      [12] sg11 = PT S→N tram        (pre-emption phase)
+      [13] sg12 = PT N→S tram        (pre-emption phase)
+
+    Measured from feb04_only.csv (2019-02-04, Monday):
+      Median cycle   = 48s  (min=38s, max=82s, std=6s)
+      EW green sg1   = med 14s [min 4s, max 17s]  — sg4/sg5 similar
+      NS green sg2   = med  7s [min 5s, max 24s]  — sg6 similar
+      Intergreen EW→NS = 9s (3s yellow + 6s all-red)
+      Tram sg11      = med 11s [min 3s, max 41s]
+      Tram sg12      = med 16s [min 8s, max 43s]
+
+    Night mode: state=8 in CSV rows 01:00:54–04:59:59 (n=14,346 rows)
+    Swiss Gelbblinker: all sg1–sg10 flash amber; sg11/sg12 (PT) remain dark.
+    Switching is handled by run_sumo.py via TraCI at t=3654s and t=18000s.
+-->
+<tlLogics>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- DAY PROGRAM — fully actuated, calibrated from CSV           -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <tlLogic id="TL_C" type="actuated" programID="day" offset="0">
+
+        <!-- Phase 0: EW GREEN
+             sg1(G)+sg4(G)+sg5(g yield)+sg8(G ped EW N-side)+sg10(G ped EW S-side)
+             Pedestrian EW crossings concurrent with EW vehicle phase (standard practice) -->
+        <!-- state: sg1 sg4 sg5 sg2 sg3 sg6a sg6b sg6c sg7 sg8 sg9 sg10 sg11 sg12 -->
+        <phase duration="14" state="GGgrrrrrrGrGrr"
+               minDur="4" maxDur="17" name="EW_green"/>
+
+        <!-- Phase 1: EW YELLOW (3s Swiss standard yellow, SVG Art.69)
+             Pedestrian signals already cleared. -->
+        <phase duration="3"  state="yyyrrrrrrrrrrr" name="EW_yellow"/>
+
+        <!-- Phase 2: ALL-RED intergreen 1 (6s, total EW→NS gap = 9s from CSV)
+             Ensures clearance of intersection before NS vehicles enter. -->
+        <phase duration="6"  state="rrrrrrrrrrrrrr" name="all_red_1"/>
+
+        <!-- Phase 3: NS GREEN
+             sg2(G)+sg3(G)+sg6a(G)+sg6b(G)+sg6c(g yield)+sg7(G ped NS W)+sg9(G ped NS E)
+             Pedestrian NS crossings concurrent with NS vehicle phase. -->
+        <phase duration="7"  state="rrrGGGGgGrGrrr"
+               minDur="5" maxDur="24" name="NS_green"/>
+
+        <!-- Phase 4: NS YELLOW (3s, Swiss standard) -->
+        <phase duration="3"  state="rrryyyyyrrrrrr" name="NS_yellow"/>
+
+        <!-- Phase 5: ALL-RED intergreen 2 (6s) -->
+        <phase duration="6"  state="rrrrrrrrrrrrrr" name="all_red_2"/>
+
+        <!-- Phase 6: PT N→S pre-emption (sg12, pos[13])
+             Only tram signal active; all other movements red.
+             Activated by TraCI on sg12 rising edge from CSV timestamps. -->
+        <phase duration="16" state="rrrrrrrrrrrrrG"
+               minDur="8" maxDur="43" name="PT_N_to_S"/>
+
+        <!-- Phase 7: PT S→N pre-emption (sg11, pos[12])
+             Only tram signal active; all other movements red. -->
+        <phase duration="11" state="rrrrrrrrrrrrGr"
+               minDur="3" maxDur="41" name="PT_S_to_N"/>
+
+    </tlLogic>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- NIGHT PROGRAM — Swiss Gelbblinker (SVG §68)                 -->
+    <!-- Active 01:00:54–04:59:59 (state=8 in CSV, n=14,346 rows)   -->
+    <!-- Vehicles yield and may proceed when safe (not full red).    -->
+    <!-- sg11/sg12 (PT) confirmed dark during this window in CSV.    -->
+    <!-- 'o' = off/dark (SUMO); 'y' = yellow                        -->
+    <!-- 14-char: all vehicle sg1-sg10 positions flash;             -->
+    <!--          sg11(pos[12]) + sg12(pos[13]) remain dark.         -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <tlLogic id="TL_C" type="static" programID="night" offset="0">
+        <!-- 1s on, 1s off — standard flashing amber cadence -->
+        <phase duration="1" state="yyyyyyyyyyyyoo" name="flash_on"/>
+        <phase duration="1" state="oooooooooooooo" name="flash_off"/>
+    </tlLogic>
+
+</tlLogics>

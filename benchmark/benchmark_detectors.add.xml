@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  benchmark_detectors.add.xml
+  ============================
+  E1 loop detectors only — no SUMO calibrators.
+  Use nVehContrib from each detector's output XML to compute per-period
+  vehicle counts for reward signal calculation in RL agents.
+
+  Detector positions match the physical installation in Genser et al. (2023):
+    D1  N_tram_in, 220m upstream (informational, ~50% trams pass)
+    D2  N_tram_in,  50m upstream (primary tram validator)
+    D3  N_tram_in,   1m upstream (primary tram validator)
+    D4  N_in,       18m upstream — BOTH lanes (motor vehicle only after sg3 correction)
+    D5  E_in,       43m upstream — both lanes
+    D6  S_in,        2m upstream — both lanes (motor vehicle only, sg6-gated)
+    D7  S_in,       15m upstream — both lanes (motor vehicle only, sg6-gated)
+    D8  S_out,      50m downstream
+    D9  W_out L0,   10m downstream
+    D10 W_out L1,   10m downstream
+
+  D9 and D10 are ALWAYS reported separately (different lane movements).
+-->
+<additional>
+    <!-- Vehicle type definitions (needed without calibrators) -->
+    <vType id="car"  vClass="passenger" length="4.5" maxSpeed="13.889"
+           accel="2.6" decel="4.5" sigma="0.5" tau="1.2"/>
+    <vType id="bike" vClass="bicycle"   length="1.8" maxSpeed="6.111"
+           accel="1.2" decel="3.0" sigma="0.6" tau="1.0"/>
+    <vType id="tram" vClass="rail_urban" length="36.3" maxSpeed="8.333"
+           accel="1.2" decel="2.0" sigma="0.0"/>
+
+    <!-- ── Tram detectors (North approach tram track) ──────────────────── -->
+    <e1Detector id="d1"  lane="N_tram_in_0" pos="30.0"  period="900"
+                file="output/det_d1.xml"  friendlyPos="true"/>
+    <e1Detector id="d2"  lane="N_tram_in_0" pos="200.0" period="900"
+                file="output/det_d2.xml"  friendlyPos="true"/>
+    <e1Detector id="d3"  lane="N_tram_in_0" pos="249.0" period="900"
+                file="output/det_d3.xml"  friendlyPos="true"/>
+
+    <!-- ── Approach detectors ──────────────────────────────────────────── -->
+    <!-- D4: N_in BOTH lanes — aggregate d4+d4b for motor vehicle count   -->
+    <e1Detector id="d4"  lane="N_in_0"  pos="232.0" period="900"
+                file="output/det_d4.xml"  friendlyPos="true"/>
+    <e1Detector id="d4b" lane="N_in_1"  pos="232.0" period="900"
+                file="output/det_d4b.xml" friendlyPos="true"/>
+    <!-- D5: E_in both lanes -->
+    <e1Detector id="d5a" lane="E_in_0"  pos="207.0" period="900"
+                file="output/det_d5a.xml" friendlyPos="true"/>
+    <e1Detector id="d5b" lane="E_in_1"  pos="207.0" period="900"
+                file="output/det_d5b.xml" friendlyPos="true"/>
+    <!-- D6: S_in both lanes, 2m from junction (motor only: use during sg6=1) -->
+    <e1Detector id="d6a" lane="S_in_0"  pos="225.0" period="900"
+                file="output/det_d6a.xml" friendlyPos="true"/>
+    <e1Detector id="d6b" lane="S_in_1"  pos="225.0" period="900"
+                file="output/det_d6b.xml" friendlyPos="true"/>
+    <!-- D7: S_in both lanes, 15m from junction -->
+    <e1Detector id="d7a" lane="S_in_0"  pos="210.0" period="900"
+                file="output/det_d7a.xml" friendlyPos="true"/>
+    <e1Detector id="d7b" lane="S_in_1"  pos="210.0" period="900"
+                file="output/det_d7b.xml" friendlyPos="true"/>
+
+    <!-- ── Downstream detectors ────────────────────────────────────────── -->
+    <e1Detector id="d8"  lane="S_out_0"  pos="50.0"  period="900"
+                file="output/det_d8.xml"  friendlyPos="true"/>
+    <!-- D9 and D10 are SEPARATE — different movements, never averaged -->
+    <e1Detector id="d9"  lane="W_out_0"  pos="10.0"  period="900"
+                file="output/det_d9.xml"  friendlyPos="true"/>
+    <e1Detector id="d10" lane="W_out_1"  pos="10.0"  period="900"
+                file="output/det_d10.xml" friendlyPos="true"/>
+
+    <!-- ── Area detectors for RL state space (queue per lane) ──────────── -->
+    <laneAreaDetector id="q_N0" lane="N_in_0"  pos="180.0" endPos="248.0" period="5"
+                      file="output/queue_N0.xml" friendlyPos="true"/>
+    <laneAreaDetector id="q_N1" lane="N_in_1"  pos="180.0" endPos="248.0" period="5"
+                      file="output/queue_N1.xml" friendlyPos="true"/>
+    <laneAreaDetector id="q_E0" lane="E_in_0"  pos="30.0"  endPos="248.0" period="5"
+                      file="output/queue_E0.xml" friendlyPos="true"/>
+    <laneAreaDetector id="q_E1" lane="E_in_1"  pos="30.0"  endPos="248.0" period="5"
+                      file="output/queue_E1.xml" friendlyPos="true"/>
+    <laneAreaDetector id="q_S0" lane="S_in_0"  pos="180.0" endPos="248.0" period="5"
+                      file="output/queue_S0.xml" friendlyPos="true"/>
+    <laneAreaDetector id="q_S1" lane="S_in_1"  pos="180.0" endPos="248.0" period="5"
+                      file="output/queue_S1.xml" friendlyPos="true"/>
+</additional>
