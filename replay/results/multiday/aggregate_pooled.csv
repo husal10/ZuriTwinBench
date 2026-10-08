@@ -1,0 +1,7 @@
+,detectors_in_criterion,geh_pass_rate_pct,dft_webtag_m3_1,r2_daily_counts_across_detectors,nchrp765_r2,r2_all_detector_periods,geh_period_pass_rate_pct
+exact|all,9,100.0,PASS,0.9999999998274265,PASS,0.9999999277495073,100.0
+exact|weekday,9,100.0,PASS,0.9999999997242631,PASS,0.9999999136605237,100.0
+exact|weekend,9,100.0,PASS,1.0,PASS,1.0,100.0
+actuated_tsp|all,5,60.0,FAIL,0.9959334523314498,PASS,0.9258348035666922,98.98809523809524
+actuated_tsp|weekday,5,60.0,FAIL,0.9966174841116868,PASS,0.9475397030012915,99.25
+actuated_tsp|weekend,5,80.0,FAIL,0.988941188547249,PASS,0.8326926649729507,98.33333333333333

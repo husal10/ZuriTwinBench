@@ -24,7 +24,7 @@ BRICK, OCHRE, FERN, MULB = "#b03a2a", "#d9a22c", "#2f8a48", "#9c4f93"
 DETS = D.DET
 OUTS = ["d3", "d6", "d8", "d9", "d10"]
 DNAME = {"d1": "PT 220 m", "d2": "PT 50 m", "d3": "PT 1 m", "d4": "N 18 m", "d5": "E 43 m", "d6": "S 2 m", "d7": "S 15 m",
-         "d8": "S exit", "d9": "W exit L0", "d10": "W exit L1"}
+         "d8": "S exit", "d9": "W exit inner", "d10": "W exit outer"}
 W1, W2 = 3.5, 7.16
 
 plt.rcParams.update({
