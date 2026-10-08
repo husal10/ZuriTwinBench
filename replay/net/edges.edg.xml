@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edges>
+<edge id="N_in" from="N_src" to="C" numLanes="2" speed="8.3333" allow="all" disallow="rail_urban tram" sidewalkWidth="2.0" spreadType="right"/>
+<edge id="N_out" from="C" to="N_src" numLanes="2" speed="8.3333" allow="all" disallow="rail_urban tram" sidewalkWidth="2.0" spreadType="right"/>
+<edge id="S_in" from="S_src" to="C" numLanes="2" speed="8.3333" allow="all" disallow="rail_urban tram" sidewalkWidth="2.0" spreadType="right"/>
+<edge id="S_out" from="C" to="S_src" numLanes="2" speed="8.3333" allow="all" disallow="rail_urban tram" sidewalkWidth="2.0" spreadType="right"/>
+<edge id="E_in" from="E_src" to="C" numLanes="2" speed="13.8889" allow="all" disallow="rail_urban tram" sidewalkWidth="2.0" spreadType="right"/>
+<edge id="E_out" from="C" to="E_src" numLanes="2" speed="13.8889" allow="all" disallow="rail_urban tram" sidewalkWidth="2.0" spreadType="right"/>
+<edge id="W_in" from="W_src" to="C" numLanes="1" speed="13.8889" allow="all" disallow="rail_urban tram" sidewalkWidth="2.0" spreadType="right"/>
+<edge id="W_out" from="C" to="W_src" numLanes="2" speed="13.8889" allow="all" disallow="rail_urban tram" sidewalkWidth="2.0" spreadType="right"/>
+<edge id="N_tram_in" from="N_src" to="C" numLanes="1" speed="8.3333" allow="tram rail_urban" spreadType="center"/>
+<edge id="N_tram_out" from="C" to="N_src" numLanes="1" speed="8.3333" allow="tram rail_urban" spreadType="center"/>
+<edge id="S_tram_in" from="S_src" to="C" numLanes="1" speed="8.3333" allow="tram rail_urban" spreadType="center"/>
+<edge id="S_tram_out" from="C" to="S_src" numLanes="1" speed="8.3333" allow="tram rail_urban" spreadType="center"/>
+</edges>

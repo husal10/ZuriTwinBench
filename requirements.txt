@@ -8,5 +8,7 @@
 #   Minimum version: SUMO 1.18
 
 pandas>=1.5.0
+eclipse-sumo>=1.18   # provides sumo, netconvert, traci (optional if SUMO is installed system-wide)
+traci>=1.18
 numpy>=1.23.0
 matplotlib>=3.6.0
