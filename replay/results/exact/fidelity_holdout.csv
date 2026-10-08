@@ -1,0 +1,11 @@
+,obs_total,sim_total,geh_total,geh_p50,geh_p90,geh_pct_pass,nrmse,nmae,mape,r2,pbias,d,u2,in_criterion,geh_total_verdict,nrmse_verdict,nmae_verdict,mape_verdict,r2_verdict,pbias_verdict,d_verdict,u2_verdict
+d1,85.0,85.0,0.0,0.0,0.0,100.0,0.0,0.0,0.0,1.0,0.0,1.0,1.0,False,excellent,excellent,excellent,excellent,excellent,excellent,excellent,pass
+d2,174.0,174.0,0.0,0.0,0.0,100.0,0.0,0.0,0.0,1.0,0.0,1.0,1.0,True,excellent,excellent,excellent,excellent,excellent,excellent,excellent,pass
+d3,174.0,174.0,0.0,0.0,0.0,100.0,0.0,0.0,0.0,1.0,0.0,1.0,1.0,True,excellent,excellent,excellent,excellent,excellent,excellent,excellent,pass
+d4,640.0,640.0,0.0,0.0,0.0,100.0,0.0,0.0,0.0,1.0,0.0,1.0,1.0,True,excellent,excellent,excellent,excellent,excellent,excellent,excellent,pass
+d5,1709.0,1709.0,0.0,0.0,0.0,100.0,0.0,0.0,0.0,1.0,0.0,1.0,1.0,True,excellent,excellent,excellent,excellent,excellent,excellent,excellent,pass
+d6,177.0,177.0,0.0,0.0,0.0,100.0,0.0,0.0,0.0,1.0,0.0,1.0,1.0,True,excellent,excellent,excellent,excellent,excellent,excellent,excellent,pass
+d7,178.0,178.0,0.0,0.0,0.0,100.0,0.0,0.0,0.0,1.0,0.0,1.0,1.0,True,excellent,excellent,excellent,excellent,excellent,excellent,excellent,pass
+d8,177.0,177.0,0.0,0.0,0.0,100.0,0.0,0.0,0.0,1.0,0.0,1.0,1.0,True,excellent,excellent,excellent,excellent,excellent,excellent,excellent,pass
+d9,1174.0,1174.0,0.0,0.0,0.0,100.0,0.0,0.0,0.0,1.0,0.0,1.0,1.0,True,excellent,excellent,excellent,excellent,excellent,excellent,excellent,pass
+d10,460.0,460.0,0.0,0.0,0.0,100.0,0.0,0.0,0.0,1.0,0.0,1.0,1.0,True,excellent,excellent,excellent,excellent,excellent,excellent,excellent,pass

@@ -1,0 +1,62 @@
+{
+ "min_green": {
+  "EW": 12,
+  "NS": 10
+ },
+ "min_green_pri": {
+  "EW": 7,
+  "NS": 10
+ },
+ "max_green": {
+  "EW": 14,
+  "NS": 20
+ },
+ "gap": {
+  "EW": 12.0,
+  "NS": 8.0
+ },
+ "gap_to_next": {
+  "EW": 3,
+  "NS": 17
+ },
+ "start_off": {
+  "sg1": 0,
+  "sg4": 4,
+  "sg5": 1,
+  "sg2": 3,
+  "sg3": 0,
+  "sg6": 4
+ },
+ "end_early": {
+  "sg1": 2,
+  "sg4": 0,
+  "sg5": 4,
+  "sg2": 0,
+  "sg3": 0,
+  "sg6": 0
+ },
+ "ped_lead": {
+  "EW": 11,
+  "NS": 1
+ },
+ "ped_tail": {
+  "EW": -2,
+  "NS": 5
+ },
+ "t12_delay": 3,
+ "t12_min": 11,
+ "t12_max": 33,
+ "t12_margin": 3,
+ "t12_to_next": 4,
+ "t11_offset": 6,
+ "t11_min": 8,
+ "t11_max": 22,
+ "t11_margin": 4,
+ "tram_priority": true,
+ "tram_call_extra": 6,
+ "tram_s_call_extra": 14,
+ "pt_call_dist_n": 130.0,
+ "pt_call_dist_s": 40.0,
+ "pt_s_dwell_lead": 14,
+ "recall": true
+}

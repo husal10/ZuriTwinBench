@@ -1,0 +1,9 @@
+,real,sim
+n_arrivals_d3,288.0,284.0
+sg12_green_on_arrival_pct,95.48611111111111,88.02816901408451
+sg12_wait_med_s,0.0,0.0
+sg12_wait_p90_s,0.0,2.0
+n_arrivals_d6,288.0,284.0
+sg11_green_on_arrival_pct,55.90277777777778,55.28169014084507
+sg11_wait_med_s,0.0,0.0
+sg11_wait_p90_s,17.0,19.0
