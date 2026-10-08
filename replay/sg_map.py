@@ -4,12 +4,12 @@ Resolved from the generated net by (from-edge, to-edge) / crossing edges so
 link indices never depend on netconvert's internal ordering.
 
 Semantics: Table 1 of Genser et al. (2023), Data in Brief 48, 109117
-  sg1 W->E | sg2 N->W | sg3 N->S (bikes only) | sg4 E->W | sg5 E->N |
+  sg1 W->E | sg2 N->W | sg3 N->S (bikes only) | sg4 E->N | sg5 E->W (Table 1 prints them swapped; Fig. 3 arrows and the data agree with this) |
   sg6 S->W/N/E | sg7,sg9 pedestrians N/S | sg8,sg10 pedestrians W/E |
   sg11 PT S->N | sg12 PT N->S
 CSV code: 0 = red (incl. 1 s red-yellow before and 3 s amber after green),
 1 = green, 8 = night mode (flashing amber, Gelbblinker; seen in the Feb-04 file).
-Which physical arm each of sg7..sg10 crosses is NOT stated in the paper (ASSUMED).
+Crossing arms follow Table 1 + Fig. 3: sg7 W arm and sg9 E arm (pedestrians walk N/S), sg8 N arm and sg10 S arm (pedestrians walk W/E).
 """
 import xml.etree.ElementTree as ET
 
@@ -21,8 +21,8 @@ SG_LINKS = {
     "sg1": [("W_in", "E_out")],
     "sg2": [("N_in", "W_out")],
     "sg3": [("N_in", "S_out")],
-    "sg4": [("E_in", "W_out")],
-    "sg5": [("E_in", "N_out")],
+    "sg4": [("E_in", "N_out")],
+    "sg5": [("E_in", "W_out")],
     "sg6": [("S_in", "N_out"), ("S_in", "W_out"), ("S_in", "E_out")],
     "sg7": [("X", "W_in")],
     "sg8": [("X", "N_in")],

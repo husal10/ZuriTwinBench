@@ -4,8 +4,8 @@
 <connection from="N_in" to="W_out" fromLane="1" toLane="1" tl="TL_C" linkIndex="1"/>
 <connection from="N_in" to="W_out" fromLane="2" toLane="2" tl="TL_C" linkIndex="1"/>
 <connection from="N_in" to="S_out" fromLane="2" toLane="1" tl="TL_C" linkIndex="2"/>
-<connection from="E_in" to="W_out" fromLane="2" toLane="2" tl="TL_C" linkIndex="3"/>
-<connection from="E_in" to="N_out" fromLane="1" toLane="1" tl="TL_C" linkIndex="4"/>
+<connection from="E_in" to="W_out" fromLane="2" toLane="2" tl="TL_C" linkIndex="4"/>
+<connection from="E_in" to="N_out" fromLane="1" toLane="1" tl="TL_C" linkIndex="3"/>
 <connection from="S_in" to="E_out" fromLane="1" toLane="1" tl="TL_C" linkIndex="5"/>
 <connection from="S_in" to="N_out" fromLane="2" toLane="2" tl="TL_C" linkIndex="5"/>
 <connection from="S_in" to="W_out" fromLane="2" toLane="2" tl="TL_C" linkIndex="5"/>
