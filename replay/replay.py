@@ -28,7 +28,7 @@ import numpy as np, pandas as pd
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
-import data as D, sg_map, compare as C
+import data as D, sg_map, compare as C, fidelity as F
 import xml.etree.ElementTree as ET
 
 TLS = "TL_C"
@@ -148,16 +148,77 @@ def pick(rng, loops):
     return int(rng.choice(len(loops), p=w / w.sum())) if w.sum() > 0 else None
 
 
+def rises(col):
+    x = np.asarray(col) > 0
+    return np.where(x[1:] & ~x[:-1])[0] + 1
+
+
+def classify(g, dets, name, evs, cache):
+    """Tram vs MPT/bike label per event of a detector that shares its loop between modes.
+    Rules are data-derived (see detectors.json): a PT event is followed by a green start of
+    the PT signal (sg11) or follows a d3 tram detection; d6 inherits the label of the d7
+    event just before it (d7->d6 pairing is 98.6 %)."""
+    if name in cache:
+        return cache[name]
+    rule, starts = dets[name]["classify"], [a for a, _ in evs]
+    out = []
+    for a in starts:
+        cls = None
+        D0 = dict(evs)[a]
+        if "tram_if_green_at_end" in rule:
+            sg = g[rule["tram_if_green_at_end"]].to_numpy()
+            e = a + D0
+            cls = "tram" if (sg[max(0, e - 2):e + 2] == 1).any() else "mpt"
+        if cls is None and "inherit_forward" in rule:
+            fwd = classify(g, dets, rule["inherit_forward"], events(g[rule["inherit_forward"]].to_numpy()), cache)
+            nxt = [c0 for s0, c0 in fwd if a <= s0 <= a + rule["within_s"]]
+            cls = nxt[0] if nxt else None
+        if cls is None and "inherit" in rule:
+            base = classify(g, dets, rule["inherit"], events(g[rule["inherit"]].to_numpy()), cache)
+            prev = [(s0, c0) for s0, c0 in base if a - rule["within_s"] <= s0 <= a]
+            cls = prev[-1][1] if prev else None
+        if cls is None and "tram_if_rise" in rule:
+            r = rises(g[rule["tram_if_rise"]].to_numpy())
+            w0, w1 = rule["window_s"]
+            cls = "tram" if ((r >= a + w0) & (r <= a + w1)).any() else "mpt"
+        if cls is None and "tram_if_lag_after" in rule:
+            s3 = np.array([s0 for s0, _ in events(g[rule["tram_if_lag_after"]].to_numpy())])
+            l0, l1 = rule["lag_s"]
+            cls = "tram" if len(s3) and ((a - s3 >= l0) & (a - s3 <= l1)).any() else "mpt"
+        out.append((a, cls or "tram"))
+    cache[name] = out
+    return out
+
+
 def schedule(g, dets, mode, seed, ordinal, pos, llen, nrows):
-    """Return ({row: [action]}, n_events).  Actions are dicts consumed by run()."""
-    plan = {}
+    """Return ({row: [action]}, stats).  Actions are dicts consumed by run()."""
+    plan, cache, stats = {}, {}, {}
+    # d2 trams that follow a dwelling d1 tram are emergent in hybrid mode (not injected twice)
+    emergent_d2 = set()
+    if mode == "hybrid" and dets.get("d1", {}).get("role_hybrid") == "dwell":
+        s2 = [a for a, _ in events(g["d2"].to_numpy())]
+        for a1, _ in events(g["d1"].to_numpy()):
+            nxt = [x for x in s2 if a1 + 10 < x <= a1 + 150]
+            if nxt:
+                emergent_d2.add(nxt[0])
     for d, c in dets.items():
         role = "ghost" if mode == "exact" else c.get("role_hybrid", "observe")
         if role == "observe":
             continue
         rng = np.random.default_rng(seed + int(d[1:]) + ordinal * 101)
-        for a, D in events(g[d].to_numpy()):
-            k = pick(rng, c["loops"])
+        evs = events(g[d].to_numpy())
+        labels = dict(classify(g, dets, d, evs, cache)) if "classify" in c else {}
+        if labels:
+            stats[d] = {k: sum(1 for v in labels.values() if v == k) for k in ("tram", "mpt")}
+        for a, D in evs:
+            if role == "drive" and d == "d2" and a in emergent_d2:
+                continue
+            if labels:
+                want = labels[a]
+                cand = [i for i, lp in enumerate(c["loops"]) if (lp["vtype"] == "tram") == (want == "tram")]
+                k = int(rng.choice(cand)) if cand else 0
+            else:
+                k = pick(rng, c["loops"])
             if k is None:
                 continue
             lp = c["loops"][k]
@@ -173,13 +234,16 @@ def schedule(g, dets, mode, seed, ordinal, pos, llen, nrows):
                     act.update(type=gt, v=v, p0=max(0.05, p - v * 1.25), at=max(0, a - 2), rm=a + D + 1)
                 else:             # hold on the loop, then remove (removal takes effect ~2 steps later)
                     act.update(type=gt, v=0.0, p0=p + 0.5, at=a, rm=a + D - 2)
-            else:                 # drive: a real vehicle crossing the loop for ~D seconds, then travelling on
+            else:                 # drive / dwell: a real vehicle crossing the loop, then travelling on
                 Lv = {"tram": 36.3, "car": 4.5, "bike": 1.8}[lp["vtype"]]
                 vmax = 8.0 if tram else (6.0 if lp["vtype"] == "bike" else (13.0 if lp["edge"].startswith("E") else 8.0))
-                v = float(np.clip(Lv / (D - 0.5), 1.0, vmax))
+                dwell = role == "dwell" and tram        # MPT events on a 'dwell' detector just drive
+                v = 8.0 if dwell else float(np.clip(Lv / (D - 0.5), 1.0, vmax))
                 act.update(type=lp["vtype"], v=v, p0=max(0.05, p - v * 1.25), at=max(0, a - 2), rm=None, drive=True)
+                if dwell:             # stop with the tram body on the loop for the observed dwell
+                    act["stop"] = (lp["edge"], p + 3.0, act["lane"], max(1, D - 9))
             plan.setdefault(act["at"], []).append(act)
-    return plan
+    return plan, stats
 
 
 def run(args):
@@ -204,7 +268,7 @@ def run(args):
     traci.trafficlight.setProgram(TLS, "replay")
     print(f"net links={nlinks}  sg->links={sgl}")
 
-    summary, nveh, t_wall = [], 0, time.time()
+    summary, nveh, t_wall, fid_days = [], 0, time.time(), []
     det_names = list(dets)
     loop_ids = {d: [f"{d}_{k}" for k in range(len(c["loops"]))] for d, c in dets.items()}
     for date, g, missing in day_list:
@@ -218,7 +282,9 @@ def run(args):
             traci.simulationStep(base + r0)
         g = g.reset_index(drop=True)                             # row i == second r0+i of the day
         n = len(g)
-        plan = schedule(g, dets, args.mode, args.seed, ordinal, pos, llen, n)
+        plan, cstats = schedule(g, dets, args.mode, args.seed, ordinal, pos, llen, n)
+        if cstats:
+            print(f"  event classes {date.date()}: {cstats}")
         rows = g[sg_map.ALL_SG].to_dict("records")
         sig = Signals(nlinks, sgl, args.amber, args.red_yellow)
         sim = np.zeros((n, len(dets)), dtype=np.int8)
@@ -243,7 +309,11 @@ def run(args):
                                       departPos=f"{act['p0']:.2f}", departSpeed=f"{act['v']:.2f}")
                     if not act.get("drive"):
                         traci.vehicle.setSpeedMode(vid, 0)
+                        traci.vehicle.setLaneChangeMode(vid, 0)   # ghosts must stay on their loop's lane
                         removals.setdefault(act["rm"], []).append(vid)
+                    elif act.get("stop"):
+                        e, sp, ln, du = act["stop"]
+                        traci.vehicle.setStop(vid, e, pos=sp, laneIndex=ln, duration=du)
                 except traci.TraCIException as ex:
                     failed += 1
                     if failed <= 3:
@@ -269,11 +339,27 @@ def run(args):
         rep.attrs.update(sig_state_match_pct=float(sig_ok.mean() * 100), missing_seconds=int(missing.sum()),
                          insertion_failures=failed)
         rep.to_csv(out_dir / "report.csv")
+        obs_c, sim_c = F.period_counts(real, det_names, args.period), F.period_counts(simdf.set_index(real.index), det_names, args.period)
+        fid, agg = F.evaluate(obs_c, sim_c, det_names, exclude=tuple(args.exclude))
+        fid.to_csv(out_dir / "fidelity.csv")
+        pd.Series(agg).to_csv(out_dir / "fidelity_aggregate.csv", header=["value"])
+        fid_days.append((date.date(), fid, agg, obs_c, sim_c))
         summary.append((date.date(), rep))
         print(f"\n== {date.date()} ({args.mode}) ==")
         print(C.format_report(rep))
+        print(f"\n-- fidelity ({args.period} s periods; metrics as in the ZuriTwinBench paper) --")
+        print(F.format_fidelity(fid, agg))
     traci.close()
     pd.concat({str(d): r for d, r in summary}).to_csv(Path(args.out) / f"report_{args.mode}.csv")
+    if len(fid_days) > 1:      # pooled over all days: every detector-day is one observation
+        dets_ = list(fid_days[0][1].index)
+        obs_all = pd.concat([o for *_, o, _ in fid_days], ignore_index=True)
+        sim_all = pd.concat([s_ for *_, s_ in fid_days], ignore_index=True)
+        pf, pa = F.evaluate(obs_all, sim_all, dets_, exclude=tuple(args.exclude))
+        pf.to_csv(Path(args.out) / "fidelity_all_days.csv")
+        pd.Series(pa).to_csv(Path(args.out) / "fidelity_all_days_aggregate.csv", header=["value"])
+        print(f"\n== all {len(fid_days)} days pooled (per-period series concatenated) ==")
+        print(F.format_fidelity(pf, pa))
     print(f"\nwall time {time.time() - t_wall:.0f}s; outputs in {args.out}")
 
 
@@ -286,6 +372,8 @@ def main():
     ap.add_argument("--to", dest="t_to", help="end timestamp (exclusive)")
     ap.add_argument("--amber", type=int, default=3, help="amber seconds after a vehicle group leaves green (0 = none)")
     ap.add_argument("--red-yellow", type=int, default=1, help="red-yellow seconds before green on sg1..sg6 (paper: 1 s)")
+    ap.add_argument("--period", type=int, default=3600, help="aggregation period (s) for the fidelity metrics (paper: 3600)")
+    ap.add_argument("--exclude", nargs="*", default=["d1"], help="detectors left out of the acceptance criterion (paper: d1, >50 m from the stop line)")
     ap.add_argument("--tol", type=int, default=2, help="event matching tolerance in seconds")
     ap.add_argument("--gui", action="store_true")
     ap.add_argument("--delay", type=int, default=100, help="sumo-gui delay (ms/step)")
