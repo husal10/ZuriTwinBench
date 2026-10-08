@@ -134,12 +134,13 @@ class Signals:
 
 
 def build_cmd(args, work, begin):
+    tripinfo = [] if args.mode == "exact" else ["--tripinfo-output", str(Path(args.out) / "tripinfo.xml")]
     exe = "sumo-gui" if args.gui else "sumo"
     cmd = [exe, "-n", str(NET), "-a", str(work / "replay.add.xml"), "--begin", str(begin),
            "--step-length", "1", "--no-step-log", "true", "--no-warnings", "true",
            "--collision.action", "none", "--time-to-teleport", "-1", "--insertion-checks", "none",
            "--ignore-junction-blocker", "-1", "--lateral-resolution", "0",
-           "--seed", str(args.seed), "--human-readable-time", "true"]
+           "--seed", str(args.seed), "--human-readable-time", "true"] + tripinfo
     if args.gui:
         cmd += ["--start", "true", "--delay", str(args.delay), "--quit-on-end", "true"]
     return cmd
@@ -274,6 +275,7 @@ def run(args):
     if df.empty:
         sys.exit("no rows in the selected window")
     day_list = list(D.days(df))
+    dets_base = {k: dict(v) for k, v in dets.items()}
     d0 = day_list[0][0]
     begin = int(day_list[0][1].index[0])
     traci.start(build_cmd(args, work, begin), label="replay")
@@ -285,6 +287,11 @@ def run(args):
     loop_ids = {d: [f"{d}_{k}" for k, lp in enumerate(c["loops"]) if not lp.get("shadow")] for d, c in dets.items()}
     for date, g, missing in day_list:
         ordinal = (date - d0).days
+        dets = {k: dict(v) for k, v in dets_base.items()}
+        if date.dayofweek >= 5:                       # day-type specific injected splits (calibrated on training weekends)
+            for k_, v_ in dets.items():
+                if "loops_weekend" in v_:
+                    v_["loops"] = v_["loops_weekend"]
         out_dir = Path(args.out) / date.strftime("%Y-%m-%d")
         out_dir.mkdir(parents=True, exist_ok=True)
         base, r0 = ordinal * 86400, int(g.index[0])
@@ -359,6 +366,8 @@ def run(args):
         sig_ok = np.zeros(n, dtype=bool)
         removals = {}
         failed = 0
+        KEDGES = ["E_in", "N_in", "S_in", "N_tram_in", "S_tram_in"]
+        kpi = np.zeros((n, 2 * len(KEDGES)), dtype=np.int16)      # halted + total vehicles per approach edge, per second
         for i in range(n):
             if ctl is not None:
                 g_cur, g_next = g_next, ctl_step(i + 1)
@@ -402,6 +411,10 @@ def run(args):
                         sim[i, k] = 1
                         break
             sig_ok[i] = traci.trafficlight.getRedYellowGreenState(TLS) == state
+            if args.mode != "exact":
+                for ke, e_ in enumerate(KEDGES):
+                    kpi[i, 2 * ke] = traci.edge.getLastStepHaltingNumber(e_)
+                    kpi[i, 2 * ke + 1] = traci.edge.getLastStepVehicleNumber(e_)
             if ctl is not None:
                 last_obs = {k: bool(sim[i, det_names.index(k)]) for k in ("d3", "d4", "d5", "d6")}
             if args.progress and i % 3600 == 0:
@@ -416,6 +429,12 @@ def run(args):
         simdf.insert(0, "time", [date + pd.Timedelta(seconds=r0 + int(s)) for s in range(n)])
         simdf["sg_applied_ok"] = sig_ok.astype(int)
         simdf.to_csv(out_dir / "sim_detectors.csv", index=False)
+        if args.mode != "exact":
+            kd = pd.DataFrame(kpi, columns=[f"{e_}_{m_}" for e_ in KEDGES for m_ in ("halted", "veh")])
+            kd.insert(0, "sec", np.arange(n) + r0)
+            kd.to_csv(out_dir / "kpi_queues.csv.gz", index=False)
+            if ctl is not None:
+                pd.DataFrame(ctl.events, columns=["sec", "event"]).assign(sec=lambda d_: d_["sec"] + r0).to_csv(out_dir / "controller_events.csv", index=False)
         rep = C.compare(real, simdf, det_names, tol=args.tol)
         rep.attrs.update(sig_state_match_pct=float(sig_ok.mean() * 100), missing_seconds=int(missing.sum()),
                          insertion_failures=failed)

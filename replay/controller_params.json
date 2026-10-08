@@ -1,6 +1,6 @@
 {
  "min_green": {
-  "EW": 12,
+  "EW": 11,
   "NS": 10
  },
  "min_green_pri": {
@@ -13,10 +13,10 @@
  },
  "gap": {
   "EW": 12.0,
-  "NS": 8.0
+  "NS": 6.0
  },
  "gap_to_next": {
-  "EW": 3,
+  "EW": 4,
   "NS": 17
  },
  "start_off": {
@@ -45,16 +45,16 @@
  },
  "t12_delay": 3,
  "t12_min": 11,
- "t12_max": 33,
+ "t12_max": 34,
  "t12_margin": 3,
  "t12_to_next": 4,
  "t11_offset": 6,
  "t11_min": 8,
- "t11_max": 22,
+ "t11_max": 25,
  "t11_margin": 4,
  "tram_priority": true,
- "tram_call_extra": 6,
- "tram_s_call_extra": 14,
+ "tram_call_extra": 10,
+ "tram_s_call_extra": 18,
  "pt_call_dist_n": 130.0,
  "pt_call_dist_s": 40.0,
  "pt_s_dwell_lead": 14,
