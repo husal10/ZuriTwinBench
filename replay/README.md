@@ -6,7 +6,6 @@ every simulated second, detectors d1–d10 as induction loops at the paper's pos
 > Genser, Makridis, Yang, Abmühl, Menendez, Kouvelas (2023). *A traffic signal and loop detector dataset of an
 > urban intersection regulated by a fully actuated signal control system.* Data in Brief 48, 109117.
 > Data: ETH Research Collection, doi:10.3929/ethz-b-000556642 (CC BY 4.0).
-> (The top-level README of this repo cites the wrong title/authors.)
 
 ## Run
 ```bash
@@ -20,6 +19,15 @@ python replay/replay.py --csv data/ --from "2019-02-04 06:00" --to "2019-02-04 1
 python replay/calibrate_controller.py --csv data/feb04_only.csv --train-until "2019-02-04 12:00:00"
 python replay/replay.py --csv data/feb04_only.csv --mode actuated --holdout-from "2019-02-04 12:00:00" --out out_act
 python replay/plots.py --csv data/feb04_only.csv --runs exact=out_ex hybrid=out_hy actuated=out_act --holdout-from "2019-02-04 12:00:00"
+```
+Multi-day (59 days, in parallel) and the closed-loop twin on held-out days:
+```bash
+python replay/split_days.py days/ /path/to/intersection_data_set_*.csv            # one CSV per calendar day
+python replay/run_batch.py --days days/ --dates 2019-01-01:2019-02-28 --mode exact --label exact --out runs -j 2
+python replay/calibrate_controller.py --train-days "days/2019-01-*.csv" --test-days "days/2019-02-*.csv"   # calibrate on January, test offline on February
+python replay/run_batch.py --days days/ --dates 2019-02-01:2019-02-28 --mode actuated --label actuated_tsp --out runs -j 2
+python replay/aggregate_multiday.py --runs runs --days days/ --labels exact actuated_tsp --out results/multiday
+python replay/plots_multiday.py --runs runs --days days/ --tables results/multiday --out figures
 ```
 Full day ≈ 5 min headless (≈ 86 400 TraCI steps). Outputs per day in `out/<date>/`:
 `sim_detectors.csv` (same layout as the input; detector columns = what the SUMO loops saw, sg columns = field
