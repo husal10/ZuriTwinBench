@@ -191,8 +191,8 @@
     <junction id=":C_13_0" type="internal" x="256.40" y="243.92" incLanes=":C_6_0" intLanes=":C_10_0 :C_c1_0 :C_c2_0" />
     <junction id=":C_14_0" type="internal" x="243.60" y="251.03" incLanes=":C_8_0" intLanes=":C_0_0 :C_0_1 :C_2_0 :C_3_0 :C_5_0 :C_9_0 :C_10_0 :C_c2_0 :C_c3_0" />
 
-    <connection from="E_in" to="N_out" fromLane="1" toLane="1" via=":C_4_0" tl="TL_C" linkIndex="4" dir="r" state="o" />
-    <connection from="E_in" to="W_out" fromLane="2" toLane="2" via=":C_5_0" tl="TL_C" linkIndex="3" dir="s" state="o" />
+    <connection from="E_in" to="N_out" fromLane="1" toLane="1" via=":C_4_0" tl="TL_C" linkIndex="3" dir="r" state="o" />
+    <connection from="E_in" to="W_out" fromLane="2" toLane="2" via=":C_5_0" tl="TL_C" linkIndex="4" dir="s" state="o" />
     <connection from="N_in" to="W_out" fromLane="1" toLane="1" via=":C_0_0" tl="TL_C" linkIndex="1" dir="r" state="o" />
     <connection from="N_in" to="W_out" fromLane="2" toLane="2" via=":C_0_1" tl="TL_C" linkIndex="1" dir="r" state="o" />
     <connection from="N_in" to="S_out" fromLane="2" toLane="1" via=":C_2_0" tl="TL_C" linkIndex="2" dir="s" state="o" />

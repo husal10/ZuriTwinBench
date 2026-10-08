@@ -51,13 +51,13 @@ def tram(f, t, sg):
 def cross(edges, sg):
     return f'<crossing node="C" edges="{edges}" priority="1" tlLinkIndex="{sg-1}"/>'
 cons = "<connections>\n" + "\n".join([
-    # Table 1 of Genser et al. (2023); logical lane 0 = right-most vehicle lane
+    # Table 1 of Genser et al. (2023), except sg4/sg5 swapped (Fig. 3 arrows + data; see README); logical lane 0 = right-most vehicle lane
     c("W_in","E_out",0,0,1),                       # sg1  W->E
     c("N_in","W_out",0,0,2),                       # sg2  N->W (right turn), outer W_out lane (d10)
     c("N_in","W_out",1,1,2),                       # sg2  N->W, inner W_out lane (d9) - lane split from flow conservation
     c("N_in","S_out",1,0,3),                       # sg3  N->S (bikes only)
-    c("E_in","W_out",1,1,4),                       # sg4  E->W
-    c("E_in","N_out",0,0,5),                       # sg5  E->N (right turn)
+    c("E_in","W_out",1,1,5),                       # sg5  E->W (straight)
+    c("E_in","N_out",0,0,4),                       # sg4  E->N (right turn)
     c("S_in","E_out",0,0,6),                       # sg6  S->E (right turn)
     c("S_in","N_out",1,1,6),                       # sg6  S->N
     c("S_in","W_out",1,1,6),                       # sg6  S->W (left turn)
