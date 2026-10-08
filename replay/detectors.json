@@ -1,9 +1,9 @@
 {
- "_source": "Table 2 / Fig. 3 of Genser et al. (2023), Data in Brief 48, 109117. dist_m is measured from the stop line (upstream detectors) or from the junction exit (downstream detectors). 'loops' lists every physical loop the detector id covers (Table 2: D4-D8 detect MPT+bike (+PT) on all lanes of the approach/exit); 'w' = share of the field events injected on that loop, 'route'/'vtype' = what is injected. Entries marked INFERRED are not stated in the paper.",
+ "_source": "Table 2 / Fig. 3 of Genser et al. (2023), Data in Brief 48, 109117. dist_m is measured from the stop line (upstream detectors) or from the junction exit (downstream detectors). 'loops' lists every physical loop the detector id covers (Table 2: D4-D8 detect MPT+bike (+PT) on all lanes of the approach/exit); 'w' = share of the field events injected on that loop, 'route'/'vtype' = what is injected. Entries marked INFERRED are not stated in the paper. Event classes for d6/d7 (tram vs MPT) are derived from the CSV, see 'classify'.",
  "d1": {
   "ref": "stop",
   "dist_m": 220,
-  "role_hybrid": "ghost",
+  "role_hybrid": "dwell",
   "loops": [
    {
     "edge": "N_tram_in",
@@ -12,7 +12,8 @@
     "vtype": "tram",
     "route": "rt_tram_NS"
    }
-  ]
+  ],
+  "_data": "139 events/day, ALL followed by a d2 event within 150 s; occupancy 26-46 s (median 33 s); events only 07-22 h; 60% of d2 trams are preceded by a d1 event. => trams dwelling at a stop ~220 m upstream (one line). Hybrid: a real tram stops there for the observed time, then continues; the matching d2 event is then emergent."
  },
  "d2": {
   "ref": "stop",
@@ -50,19 +51,19 @@
    {
     "edge": "N_in",
     "lane": 0,
-    "w": 0.8,
+    "w": 0.975,
     "vtype": "car",
     "route": "rt_car_NW"
    },
    {
     "edge": "N_in",
     "lane": 1,
-    "w": 0.2,
+    "w": 0.025,
     "vtype": "bike",
     "route": "rt_bike_NS"
    }
   ],
-  "_inferred": "w split: d10 (N->W lane) ~857/day vs d4 ~1066/day => ~20% bikes on sg3 (N->S)"
+  "_inferred": "bike share ~2.5%: only 26/287 d8 events are not tram-linked (short 2-5 s events = bikes/MPT on the S arm), so at most ~25 N->S bikes/day pass d4."
  },
  "d5": {
   "ref": "stop",
@@ -101,16 +102,20 @@
    {
     "edge": "S_in",
     "lane": 1,
-    "w": 0,
+    "w": 1,
     "vtype": "car",
     "route": "rt_car_SN"
    }
-  ]
+  ],
+  "classify": {
+   "tram_if_green_at_end": "sg11"
+  },
+  "_inferred": "sg6 = MPT, sg11 = tram only. 98% of d6 occupancies end with sg11 green (18% sg6) => PT; an event is MPT when sg6, not sg11, is green at its end."
  },
  "d7": {
   "ref": "stop",
   "dist_m": 15,
-  "role_hybrid": "drive",
+  "role_hybrid": "dwell",
   "loops": [
    {
     "edge": "S_tram_in",
@@ -122,12 +127,21 @@
    {
     "edge": "S_in",
     "lane": 1,
-    "w": 0,
+    "w": 1,
     "vtype": "car",
     "route": "rt_car_SN"
    }
   ],
-  "_inferred": "events pair 285/288 with trams (d7->d6 26 s), so injected as PT S->N; d6/d7 also see MPT/bikes per Table 2 but those are rare"
+  "_inferred": "Occupancy is ~28 s irrespective of the signal (tram dwelling at a stop on the S arm, like d1 on the N arm). 99.7% of d7 events are followed by a d6 event within 60 s, so d7 inherits the class of that d6 event (PT if sg11 releases it, MPT if sg6).",
+  "classify": {
+   "inherit_forward": "d6",
+   "within_s": 60,
+   "tram_if_rise": "sg11",
+   "window_s": [
+    -3,
+    90
+   ]
+  }
  },
  "d8": {
   "ref": "exit",
@@ -140,9 +154,30 @@
     "w": 1,
     "vtype": "tram",
     "route": "rt_tram_out_S"
+   },
+   {
+    "edge": "S_out",
+    "lane": 0,
+    "w": 0,
+    "vtype": "bike",
+    "route": "rt_bike_out_S"
+   },
+   {
+    "edge": "S_out",
+    "lane": 1,
+    "w": 0,
+    "vtype": "bike",
+    "route": "rt_bike_out_S"
    }
   ],
-  "_note": "Table 2 lists MPT/PT/bike, but the field data show d8 firing for 287/287 trams only (d3->d8 34 s), so only the tram loop is modelled."
+  "_note": "Table 2: MPT+PT+bike. Data: 261/287 events are trams (20-50 s after d3); 26 short (2-5 s) events are non-tram. In hybrid mode the S_out loops are emergent too (validated, not forced).",
+  "classify": {
+   "tram_if_lag_after": "d3",
+   "lag_s": [
+    20,
+    50
+   ]
+  }
  },
  "d9": {
   "ref": "exit",
