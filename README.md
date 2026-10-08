@@ -62,4 +62,4 @@ If you use this work, please cite the underlying dataset:
 
 ## Licence
 
-The field data (`data/feb04_only.csv`) is published by Genser et al. under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). All other files in this repository are available on GitHub — see the repository for details.
+The code in this repository is released under the [MIT licence](LICENSE). The field data (`data/feb04_only.csv`) is published by Genser et al. under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) and must be cited as above.
