@@ -28,3 +28,8 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# replay outputs
+replay/out/
+replay/_t.py
+paper/

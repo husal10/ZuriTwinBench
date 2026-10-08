@@ -1,0 +1,8 @@
+,real,sim
+cycle_med,48.0,46.0
+cycle_p90,58.5,60.0
+ew_green_med,16.0,16.0
+ns_green_med,10.0,10.0
+gap_ew_ns_med,5.0,3.0
+gap_ns_ew_med,17.0,17.0
+cycles,866.0,870.0
