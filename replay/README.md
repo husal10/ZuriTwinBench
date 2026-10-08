@@ -59,7 +59,7 @@ D8 50 m, D9/D10 10 m downstream. Distances are from the stop line / junction exi
   end of the occupancy (98 % of d6 events; sg6: 18 %) and MPT otherwise; d7 inherits the class of the d6 event that follows it (99.7 % of
   d7 events are followed by a d6 event within 60 s). d7 occupancy is about 28 s regardless of the signal: trams dwelling at a stop on the S arm.
   Classes per day are printed by the replay.
-* **d4/d5** arrive independently of the signals (lift ≈ 1.0 in every signal state), so they serve as exogenous arrival processes. d4 sees MPT (sg2, N→W) *and* bikes (sg3, N→S): bike share ≈ 2.4 % (≈ 26/day), from two independent estimates, the excess of d4 pulses in the bike-only phase (sg3 green, sg2 red: 60/h vs 52/h otherwise) and the 26 non-tram events at d8; the paper's ≈ 97/day is not supported. d5: 65 % E→W (sg4), 35 % E→N (sg5), and the d4 car lane split (82 % outer W_out lane = d10, 18 % inner = d9) come from flow conservation (d9 ≈ E→W + inner N→W, d10 ≈ outer N→W), not measurements.
+* **d4/d5** arrive independently of the signals (lift ≈ 1.0 in every signal state), so they serve as exogenous arrival processes. d4 sees MPT (sg2, N→W) *and* bikes (sg3, N→S): bike share ≈ 2.4 % (≈ 26/day), from two independent estimates, the excess of d4 pulses in the bike-only phase (sg3 green, sg2 red: 60/h vs 52/h otherwise) and the 26 non-tram events at d8; the paper's ≈ 97/day is not supported. d5: 65 % E→W (sg5), 35 % E→N (sg4), and the d4 car lane split (82 % outer W_out lane = d10, 18 % inner = d9) come from flow conservation (d9 ≈ E→W + inner N→W, d10 ≈ outer N→W), not measurements.
 * **d9/d10**: W_out inner lane (E→W) / outer lane (N→W).
 * **West arm**: there is no detector on the W approach or on the E exit, so the W→E movement (sg1) exists only as a signal; no vehicles are generated for it.
 * **sg7–sg10**: no pedestrian data; assumption: at least one pedestrian presses/crosses at every pedestrian green. In replay modes the crosswalk is simply open at the recorded greens; in the closed-loop controller presses arrive as a Poisson process (1 per 50 s per axis) and the waiting time press → walk is a KPI (no SUMO persons are generated yet).
@@ -105,7 +105,7 @@ Signal timing of the closed-loop controller vs the field signals (held-out half-
 2. **d6, d7, d8 are mostly tram detectors.** In the data they fire ≈285×/day, pair with the tram chain
    (d7→d6 26 s; d2→d3 6 s→d8 34 s) and are released by sg11/sg12; only a handful of events are MPT/bikes (see above).
 3. **Pedestrian crossings are real SUMO crossings** controlled by the TLS (the package's were disconnected edges).
-4. **Movements follow Table 1**: sg3 is bikes only, sg5 is E→N, sg6 serves W/N/E.
+4. **Movements follow Table 1 and Fig. 3**: sg3 is bikes only, sg6 serves W/N/E; sg4 = E→N and sg5 = E→W (Table 1 lists them the other way, but the figure arrows and the d9 timing agree with this), pedestrian crossings sg7 W arm, sg8 N, sg9 E, sg10 S.
 5. Signal timing comes from the data; nothing is re-actuated.
 
 ## Remaining assumptions
