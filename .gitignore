@@ -32,9 +32,4 @@ Thumbs.db
 # replay outputs
 replay/out/
 replay/_t.py
-paper/main.pdf
-paper/*.aux
-paper/*.bbl
-paper/*.blg
-paper/*.log
-paper/*.out
+paper/
