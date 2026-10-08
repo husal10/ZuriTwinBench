@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<connections>
+<connection from="W_in" to="E_out" fromLane="1" toLane="1"/>
+<connection from="N_in" to="W_out" fromLane="1" toLane="1"/>
+<connection from="N_in" to="S_out" fromLane="2" toLane="1"/>
+<connection from="E_in" to="W_out" fromLane="2" toLane="2"/>
+<connection from="E_in" to="N_out" fromLane="1" toLane="1"/>
+<connection from="S_in" to="E_out" fromLane="1" toLane="1"/>
+<connection from="S_in" to="N_out" fromLane="2" toLane="2"/>
+<connection from="S_in" to="W_out" fromLane="2" toLane="2"/>
+<connection from="N_tram_in" to="S_tram_out" fromLane="0" toLane="0"/>
+<connection from="S_tram_in" to="N_tram_out" fromLane="0" toLane="0"/>
+<crossing node="C" edges="W_in W_out" priority="1"/>
+<crossing node="C" edges="N_in N_out" priority="1"/>
+<crossing node="C" edges="E_in E_out" priority="1"/>
+<crossing node="C" edges="S_in S_out" priority="1"/>
+</connections>

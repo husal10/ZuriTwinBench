@@ -1,0 +1,298 @@
+#!/usr/bin/env python3
+"""Replay the Zürich intersection (Genser et al. 2023) in SUMO, second by second.
+
+* Signal groups sg1..sg12 are forced onto the TLS every simulated second from the
+  CSV (sim clock == time of day; day n starts at n*86400 s).  Code 8 = night mode
+  (Gelbblinker).  The CSV has no amber information: after a vehicle group leaves
+  green an amber of --amber seconds is shown inside the CSV's "0" period.
+* Detectors d1..d10 are SUMO induction loops at the documented positions
+  (detectors.json).  Their per-second state is logged to sim_detectors.csv in the
+  same layout as the input, and compared with the field data (compare.py).
+* Two replay modes
+    exact   every detector event in the CSV is reproduced by a virtual vehicle
+            placed on that loop for exactly the observed occupancy (ghost).
+            => detector columns match the field data by construction; vehicles
+            do not travel through the junction.
+    hybrid  the upstream detectors d2 (tram N->S), d4, d5 (cars), d7 (tram S->N)
+            inject real vehicles that drive through the junction under the
+            replayed signals; d3, d6, d8, d9, d10 are *emergent* and are
+            validated against the data (d1 stays a ghost).
+
+Usage
+  python replay.py --csv ../data/feb04_only.csv --mode exact --out out
+  python replay.py --csv data_dir/ --mode hybrid --from "2019-02-04 06:00" --to "2019-02-04 10:00" --gui
+"""
+import argparse, json, os, subprocess, sys, time
+from pathlib import Path
+import numpy as np, pandas as pd
+
+HERE = Path(__file__).parent
+sys.path.insert(0, str(HERE))
+import data as D, sg_map, compare as C
+import xml.etree.ElementTree as ET
+
+TLS = "TL_C"
+NET = HERE / "net" / "zurich.net.xml"
+NIGHT_CODE = 8
+
+
+def lane_ids(net):
+    """edge -> [lane ids that allow vehicles/rail], in index order (sidewalks skipped)."""
+    out = {}
+    for e in ET.parse(net).getroot().iter("edge"):
+        if e.get("function") in ("internal", "crossing", "walkingarea"):
+            continue
+        ls = [l for l in e.iter("lane") if l.get("allow") != "pedestrian"]
+        out[e.get("id")] = [l.get("id") for l in ls]
+    return out
+
+
+def lane_lengths(net):
+    return {l.get("id"): float(l.get("length")) for l in ET.parse(net).getroot().iter("lane")}
+
+
+LANES = lane_ids(NET)
+
+
+def write_support_files(work, dets, llen, nlinks):
+    """Loops, vTypes, routes and the static 'replay' TLS program."""
+    work.mkdir(parents=True, exist_ok=True)
+    loops, pos, edges = [], {}, set()
+    for d, c in dets.items():
+        for k, lp in enumerate(c["loops"]):
+            lid = LANES[lp["edge"]][lp["lane"]]
+            L = llen[lid]
+            p = L - c["dist_m"] if c["ref"] == "stop" else c["dist_m"]
+            p = max(0.1, min(p, L - 0.1))
+            pos[(d, k)] = p
+            edges.add(lp["edge"])
+            loops.append(f'<inductionLoop id="{d}_{k}" lane="{lid}" pos="{p:.2f}" period="3600" file="NUL"/>')
+    groutes = "".join(f'<route id="g_{e}" edges="{e}"/>' for e in sorted(edges))
+    add = f"""<additional>
+ <vType id="car" vClass="passenger" length="4.5" minGap="2.5" accel="2.6" decel="4.5" maxSpeed="13.89" sigma="0.3" tau="1.2"/>
+ <vType id="bike" vClass="bicycle" length="1.8" minGap="1.0" accel="1.2" decel="3.0" maxSpeed="6.11" sigma="0.3" color="0.2,0.8,0.2" guiShape="bicycle"/>
+ <vType id="tram" vClass="tram" length="36.3" width="2.65" minGap="5" accel="1.0" decel="3.0" maxSpeed="8.33" sigma="0" tau="1.5" color="1,0.8,0" guiShape="rail/railcar"/>
+ <vType id="ghost_car" vClass="passenger" length="2.0" minGap="0" accel="1e-9" decel="9" maxSpeed="100" speedFactor="1" speedDev="0" sigma="0" color="0.6,0.6,0.6"/>
+ <vType id="ghost_tram" vClass="tram" length="3.0" width="2.65" minGap="0" accel="1e-9" decel="9" maxSpeed="100" speedFactor="1" speedDev="0" sigma="0" color="0.9,0.6,0" guiShape="rail/railcar"/>
+ <route id="rt_car_NW" edges="N_in W_out"/><route id="rt_bike_NS" edges="N_in S_out"/>
+ <route id="rt_car_EN" edges="E_in N_out"/><route id="rt_car_EW" edges="E_in W_out"/>
+ <route id="rt_car_SN" edges="S_in N_out"/>
+ <route id="rt_tram_NS" edges="N_tram_in S_tram_out"/><route id="rt_tram_SN" edges="S_tram_in N_tram_out"/>
+ <route id="rt_tram_out_S" edges="S_tram_out"/><route id="rt_car_out_W" edges="W_out"/><route id="rt_bike_out_S" edges="S_out"/>
+ {groutes}
+ {chr(10).join(loops)}
+ <tlLogic id="{TLS}" type="static" programID="replay" offset="0">
+  <phase duration="31536000" state="{'r' * nlinks}"/>
+ </tlLogic>
+</additional>"""
+    (work / "replay.add.xml").write_text(add)
+    return pos
+
+
+def events(col):
+    """[(start_idx, length)] of consecutive 1-runs."""
+    x = np.concatenate([[0], (col > 0).astype(np.int8), [0]])
+    dx = np.diff(x)
+    s, e = np.where(dx == 1)[0], np.where(dx == -1)[0]
+    return list(zip(s.tolist(), (e - s).tolist()))
+
+
+class Signals:
+    """CSV code -> TLS state string.  Paper: 1 s red-yellow before and 3 s amber after
+    each green are folded into code 0, so they are re-created here for sg1..sg6."""
+    def __init__(self, nlinks, sgl, amber, red_yellow=1):
+        self.n, self.sgl, self.amber, self.ry = nlinks, sgl, amber, red_yellow
+        self.prev = {s: 0 for s in sg_map.ALL_SG}
+        self.left = {s: 0 for s in sg_map.ALL_SG}
+
+    def state(self, row, nxt):
+        st = ["r"] * self.n
+        for sg in sg_map.ALL_SG:
+            v, vn = int(row[sg]), int(nxt[sg])
+            if v == NIGHT_CODE:
+                ch = "O" if sg in sg_map.NIGHT_PRIORITY else "o"
+                self.left[sg] = 0
+            elif v == 1:
+                ch = "g" if sg in sg_map.YIELD_G else "G"
+                self.left[sg] = 0
+            else:
+                veh = sg in sg_map.VEH_SG
+                if veh and self.prev[sg] == 1 and self.amber > 0:
+                    self.left[sg] = self.amber
+                if self.left[sg] > 0:
+                    ch = "y"; self.left[sg] -= 1
+                elif veh and vn == 1 and self.ry > 0:
+                    ch = "u"
+                else:
+                    ch = "r"
+            self.prev[sg] = v
+            for i in self.sgl[sg]:
+                st[i] = ch
+        return "".join(st)
+
+
+def build_cmd(args, work, begin):
+    exe = "sumo-gui" if args.gui else "sumo"
+    cmd = [exe, "-n", str(NET), "-a", str(work / "replay.add.xml"), "--begin", str(begin),
+           "--step-length", "1", "--no-step-log", "true", "--no-warnings", "true",
+           "--collision.action", "none", "--time-to-teleport", "-1", "--insertion-checks", "none",
+           "--ignore-junction-blocker", "-1", "--lateral-resolution", "0",
+           "--seed", str(args.seed), "--human-readable-time", "true"]
+    if args.gui:
+        cmd += ["--start", "true", "--delay", str(args.delay), "--quit-on-end", "true"]
+    return cmd
+
+
+def pick(rng, loops):
+    w = np.array([lp["w"] for lp in loops], float)
+    return int(rng.choice(len(loops), p=w / w.sum())) if w.sum() > 0 else None
+
+
+def schedule(g, dets, mode, seed, ordinal, pos, llen, nrows):
+    """Return ({row: [action]}, n_events).  Actions are dicts consumed by run()."""
+    plan = {}
+    for d, c in dets.items():
+        role = "ghost" if mode == "exact" else c.get("role_hybrid", "observe")
+        if role == "observe":
+            continue
+        rng = np.random.default_rng(seed + int(d[1:]) + ordinal * 101)
+        for a, D in events(g[d].to_numpy()):
+            k = pick(rng, c["loops"])
+            if k is None:
+                continue
+            lp = c["loops"][k]
+            tram = lp["vtype"] == "tram"
+            lane_id = LANES[lp["edge"]][lp["lane"]]
+            p = pos[(d, k)]
+            act = dict(det=d, k=k, lp=lp, dur=D, a=a, lane=int(lane_id.rsplit("_", 1)[1]), p=p)
+            if role == "ghost":
+                gt = "ghost_tram" if tram else "ghost_car"
+                Lg = 3.0 if tram else 2.0
+                if D <= 2:        # fast crossing: on the loop for exactly D one-second steps
+                    v = Lg / (D - 0.5)
+                    act.update(type=gt, v=v, p0=max(0.05, p - v * 1.25), at=max(0, a - 2), rm=a + D + 1)
+                else:             # hold on the loop, then remove (removal takes effect ~2 steps later)
+                    act.update(type=gt, v=0.0, p0=p + 0.5, at=a, rm=a + D - 2)
+            else:                 # drive: a real vehicle crossing the loop for ~D seconds, then travelling on
+                Lv = {"tram": 36.3, "car": 4.5, "bike": 1.8}[lp["vtype"]]
+                vmax = 8.0 if tram else (6.0 if lp["vtype"] == "bike" else (13.0 if lp["edge"].startswith("E") else 8.0))
+                v = float(np.clip(Lv / (D - 0.5), 1.0, vmax))
+                act.update(type=lp["vtype"], v=v, p0=max(0.05, p - v * 1.25), at=max(0, a - 2), rm=None, drive=True)
+            plan.setdefault(act["at"], []).append(act)
+    return plan
+
+
+def run(args):
+    import traci
+    dets = {k: v for k, v in json.load(open(HERE / "detectors.json")).items() if not k.startswith("_")}
+    nlinks, sgl = sg_map.resolve(NET, TLS)
+    llen = lane_lengths(NET)
+    work = Path(args.out) / "_work"
+    pos = write_support_files(work, dets, llen, nlinks)
+
+    df = D.load(args.csv)
+    if args.t_from:
+        df = df[df.index >= pd.Timestamp(args.t_from)]
+    if args.t_to:
+        df = df[df.index < pd.Timestamp(args.t_to)]
+    if df.empty:
+        sys.exit("no rows in the selected window")
+    day_list = list(D.days(df))
+    d0 = day_list[0][0]
+    begin = int(day_list[0][1].index[0])
+    traci.start(build_cmd(args, work, begin), label="replay")
+    traci.trafficlight.setProgram(TLS, "replay")
+    print(f"net links={nlinks}  sg->links={sgl}")
+
+    summary, nveh, t_wall = [], 0, time.time()
+    det_names = list(dets)
+    loop_ids = {d: [f"{d}_{k}" for k in range(len(c["loops"]))] for d, c in dets.items()}
+    for date, g, missing in day_list:
+        ordinal = (date - d0).days
+        out_dir = Path(args.out) / date.strftime("%Y-%m-%d")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        base, r0 = ordinal * 86400, int(g.index[0])
+        if base + r0 > int(round(traci.simulation.getTime())):     # skipped days / late start
+            for v in traci.vehicle.getIDList():
+                traci.vehicle.remove(v)
+            traci.simulationStep(base + r0)
+        g = g.reset_index(drop=True)                             # row i == second r0+i of the day
+        n = len(g)
+        plan = schedule(g, dets, args.mode, args.seed, ordinal, pos, llen, n)
+        rows = g[sg_map.ALL_SG].to_dict("records")
+        sig = Signals(nlinks, sgl, args.amber, args.red_yellow)
+        sim = np.zeros((n, len(dets)), dtype=np.int8)
+        sig_ok = np.zeros(n, dtype=bool)
+        removals = {}
+        failed = 0
+        for i in range(n):
+            state = sig.state(rows[i], rows[min(i + 1, n - 1)])
+            traci.trafficlight.setRedYellowGreenState(TLS, state)
+            for vid in removals.pop(i, ()):
+                try:
+                    traci.vehicle.remove(vid)
+                except traci.TraCIException:
+                    pass
+            for act in plan.get(i, ()):
+                nveh += 1
+                vid = f"{act['det']}_{ordinal}_{act['a']}_{nveh}"
+                lp = act["lp"]
+                try:
+                    traci.vehicle.add(vid, lp["route"] if act.get("drive") else "g_" + lp["edge"], typeID=act["type"],
+                                      depart="now", departLane=str(act["lane"]),
+                                      departPos=f"{act['p0']:.2f}", departSpeed=f"{act['v']:.2f}")
+                    if not act.get("drive"):
+                        traci.vehicle.setSpeedMode(vid, 0)
+                        removals.setdefault(act["rm"], []).append(vid)
+                except traci.TraCIException as ex:
+                    failed += 1
+                    if failed <= 3:
+                        print("  insertion failed:", vid, str(ex)[:90])
+            traci.simulationStep()
+            for k, d in enumerate(det_names):
+                for lid in loop_ids[d]:
+                    if traci.inductionloop.getLastStepOccupancy(lid) > 0 or traci.inductionloop.getLastStepVehicleNumber(lid) > 0:
+                        sim[i, k] = 1
+                        break
+            sig_ok[i] = traci.trafficlight.getRedYellowGreenState(TLS) == state
+            if args.progress and i % 3600 == 0:
+                print(f"  {date.date()} {i // 3600:02d}:00 veh={traci.vehicle.getIDCount():3d} wall={time.time() - t_wall:.0f}s", flush=True)
+        for v in traci.vehicle.getIDList():
+            traci.vehicle.remove(v)
+        real = g.copy()
+        simdf = g.copy()
+        simdf[det_names] = sim
+        simdf.insert(0, "time", [date + pd.Timedelta(seconds=r0 + int(s)) for s in range(n)])
+        simdf["sg_applied_ok"] = sig_ok.astype(int)
+        simdf.to_csv(out_dir / "sim_detectors.csv", index=False)
+        rep = C.compare(real, simdf, det_names, tol=args.tol)
+        rep.attrs.update(sig_state_match_pct=float(sig_ok.mean() * 100), missing_seconds=int(missing.sum()),
+                         insertion_failures=failed)
+        rep.to_csv(out_dir / "report.csv")
+        summary.append((date.date(), rep))
+        print(f"\n== {date.date()} ({args.mode}) ==")
+        print(C.format_report(rep))
+    traci.close()
+    pd.concat({str(d): r for d, r in summary}).to_csv(Path(args.out) / f"report_{args.mode}.csv")
+    print(f"\nwall time {time.time() - t_wall:.0f}s; outputs in {args.out}")
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--csv", nargs="+", required=True, help="CSV files / directories / globs (multi-day)")
+    ap.add_argument("--mode", choices=["exact", "hybrid"], default="exact")
+    ap.add_argument("--out", default="out")
+    ap.add_argument("--from", dest="t_from", help="start timestamp, e.g. '2019-02-04 06:00:00'")
+    ap.add_argument("--to", dest="t_to", help="end timestamp (exclusive)")
+    ap.add_argument("--amber", type=int, default=3, help="amber seconds after a vehicle group leaves green (0 = none)")
+    ap.add_argument("--red-yellow", type=int, default=1, help="red-yellow seconds before green on sg1..sg6 (paper: 1 s)")
+    ap.add_argument("--tol", type=int, default=2, help="event matching tolerance in seconds")
+    ap.add_argument("--gui", action="store_true")
+    ap.add_argument("--delay", type=int, default=100, help="sumo-gui delay (ms/step)")
+    ap.add_argument("--seed", type=int, default=1)
+    ap.add_argument("--progress", action="store_true")
+    run(ap.parse_args())
+
+
+if __name__ == "__main__":
+    main()
