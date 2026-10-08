@@ -83,6 +83,7 @@ class ActuatedController:
         self.t11 = None
         self.t11_pending_since = None
         self.stats = {"ped_wait": [], "tram_n_wait": [], "tram_s_wait": []}
+        self.events = []                 # (t, kind): stage / TSP actions, for event studies
         self._ped_press = {"EW": [], "NS": []}       # press times of waiting pedestrians per axis
         self._call_t = {"n": None, "s": None}
 
@@ -131,6 +132,7 @@ class ActuatedController:
         # -- N->S tram stage (sg12)
         if self.pend["n"] and p.tram_priority and self.t12 is None and self.state == "GAP" and t >= self.t12_ready:
             self.t12 = [t, None]
+            self.events.append((t, "T12"))
             self._d3_last = None
             self.stats["tram_n_wait"].append(t - self._call_t["n"])
             self.pend["n"] = False
@@ -143,6 +145,7 @@ class ActuatedController:
         # -- S->N tram (sg11) rides on the NS stage
         if self.pend["s"] and self.t11 is None and self.state == "VEH" and self.cur == "NS" and (t - self.t0) >= p.t11_offset:
             self.t11 = [t, None]
+            self.events.append((t, "T11"))
             self._d6_last = None
             self.stats["tram_s_wait"].append(t - self._call_t["s"])
             self.pend["s"] = False
@@ -157,6 +160,8 @@ class ActuatedController:
     def _end_stage(self, t):
         p, cur = self.p, self.cur
         D = max(p.end_early[g] for g in VEH[cur])
+        if p.tram_priority and (self.pend["n"] or (cur == "EW" and self.pend["s"])) and (t - self.t0) < p.min_green[cur]:
+            self.events.append((t, "early_termination_" + cur))      # stage cut short by TSP
         self.end_at = {g: t + D - p.end_early[g] for g in VEH[cur]}
         self.stage_end = t + D
         for g in PED[cur]:
@@ -171,6 +176,7 @@ class ActuatedController:
 
     def _start_stage(self, t, stage):
         self.cur, self.state = stage, "VEH"
+        self.events.append((t, "stage_" + stage))
         self.t0, self.last_call = t, t
         self.end_at, self.stage_end = {}, None
         self.t12 = None if self.t12 is None or self.t12[1] is not None else self.t12

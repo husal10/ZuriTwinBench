@@ -57,28 +57,52 @@
    {
     "edge": "N_in",
     "lane": 0,
-    "w": 0.8039,
+    "w": 0.8531,
     "vtype": "car",
     "route": "rt_car_NW"
    },
    {
     "edge": "N_in",
     "lane": 1,
-    "w": 0.1717,
+    "w": 0.1258,
     "vtype": "car",
     "route": "rt_car_NW"
    },
    {
     "edge": "N_in",
     "lane": 1,
-    "w": 0.0244,
+    "w": 0.0212,
     "vtype": "bike",
     "route": "rt_bike_NS",
     "shadow": true
    }
   ],
-  "_inferred": "d4 sees MPT (sg2, N->W) and bikes (sg3, N->S). Bike share 0.0244 (~26/day): two independent estimates agree - the excess of d4 pulses during the bike-only phase (sg3 green, sg2 red: 60/h vs 52/h otherwise, ~11-26 pulses) and the 26 non-tram events at d8. The paper's ~97/day is not supported. Car lane split from flow conservation: d10 (857/day) / N->W cars (1040) = 0.824 on the outer W_out lane (d10), the rest on the inner lane (d9).",
-  "role": "input"
+  "_inferred": "Calibrated on the January training days, separately for weekdays and weekends (loops / loops_weekend): bike share = non-tram d8 events / d4 pulses; outer W_out lane (d10) share of N->W cars = d10 / ((1-b) d4). Flow conservation, not measurements.",
+  "role": "input",
+  "loops_weekend": [
+   {
+    "edge": "N_in",
+    "lane": 0,
+    "w": 0.6329,
+    "vtype": "car",
+    "route": "rt_car_NW"
+   },
+   {
+    "edge": "N_in",
+    "lane": 1,
+    "w": 0.3496,
+    "vtype": "car",
+    "route": "rt_car_NW"
+   },
+   {
+    "edge": "N_in",
+    "lane": 1,
+    "w": 0.0175,
+    "vtype": "bike",
+    "route": "rt_bike_NS",
+    "shadow": true
+   }
+  ]
  },
  "d5": {
   "ref": "stop",
@@ -88,20 +112,36 @@
    {
     "edge": "E_in",
     "lane": 0,
-    "w": 0.3521,
+    "w": 0.3537,
     "vtype": "car",
     "route": "rt_car_EN"
    },
    {
     "edge": "E_in",
     "lane": 1,
-    "w": 0.6479,
+    "w": 0.6463,
     "vtype": "car",
     "route": "rt_car_EW"
    }
   ],
-  "_inferred": "E->W share = (d9 - N->W cars on the d9 lane)/d5 = (2137-183)/3016 = 0.648; remainder E->N (sg5). Flow conservation, not measured.",
-  "role": "input"
+  "_inferred": "Calibrated on the January training days per day type: E->W share = (d9 - N->W cars on the d9 lane)/d5; the rest turn E->N (sg5). Flow conservation.",
+  "role": "input",
+  "loops_weekend": [
+   {
+    "edge": "E_in",
+    "lane": 0,
+    "w": 0.3564,
+    "vtype": "car",
+    "route": "rt_car_EN"
+   },
+   {
+    "edge": "E_in",
+    "lane": 1,
+    "w": 0.6436,
+    "vtype": "car",
+    "route": "rt_car_EW"
+   }
+  ]
  },
  "d6": {
   "ref": "stop",

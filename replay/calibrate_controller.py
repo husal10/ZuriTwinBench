@@ -107,7 +107,7 @@ def score(real, sim):
     return out
 
 
-def main():
+def main_single():
     ap = argparse.ArgumentParser()
     ap.add_argument("--csv", nargs="+", required=True)
     ap.add_argument("--train-until", default=None, help="end of the training window (default: first half of the first day)")
@@ -179,6 +179,107 @@ def main():
         print(tm.round(2).to_string())
         pg.to_csv(f"{a.report}/{name}_per_group.csv"); cyc.to_csv(f"{a.report}/{name}_cycle.csv"); tm.to_csv(f"{a.report}/{name}_tram.csv")
         print("ped wait (s) median/p90:", np.median(c.stats["ped_wait"]).round(1), np.percentile(c.stats["ped_wait"], 90).round(1))
+
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+def load_day(p):
+    date, g, _ = next(D.days(D.load([p])))
+    return date, g.reset_index(drop=True)
+
+
+def main_multi(a):
+    """Train on whole days (a.train_days), fit gaps/max greens/tram call advances on a sample of them, test on other days."""
+    import glob
+    tr_files = sorted(f for pat in a.train_days for f in glob.glob(pat))
+    te_files = sorted(f for pat in (a.test_days or []) for f in glob.glob(pat))
+    tr = [load_day(f) for f in tr_files]
+    P, leads, leads_s = derive(pd.concat([g[g["sg1"] != 8] for _, g in tr], ignore_index=True))
+    json.dump({"n": leads.tolist(), "s": leads_s.tolist()}, open(str(HERE / "tram_leads.json"), "w"))
+    sel = [tr[i][1] for i in np.linspace(0, len(tr) - 1, min(a.fit_days, len(tr))).astype(int)]
+    masks = [(g["sg1"] != 8).to_numpy() for g in sel]
+    reals = [g[m].reset_index(drop=True) for g, m in zip(sel, masks)]
+
+    def stage_score(ax):
+        s = 0.0
+        for g, m, r in zip(sel, masks, reals):
+            sim, _ = offline(g, P, leads, leads_s)
+            rs, re = union_runs(r, K.VEH[ax]); ss, se = union_runs(sim[m].reset_index(drop=True), K.VEH[ax])
+            s += SF.ks_w1(re - rs, se - ss)[1]
+        return s / len(sel)
+    for ax, gaps, maxes in (("EW", [2, 3, 4, 6, 8, 12], [10, 11, 12, 13, 14, 16]), ("NS", [1, 2, 3, 4, 6, 8, 12], [11, 12, 14, 16, 20])):
+        bb = None
+        for gp, mx in itertools.product(gaps, maxes):
+            P.gap[ax], P.max_green[ax] = float(gp), mx
+            sc = stage_score(ax)
+            if bb is None or sc < bb[0]:
+                bb = (sc, gp, mx)
+        P.gap[ax], P.max_green[ax] = float(bb[1]), bb[2]
+        print(f"fitted {ax}: gap {bb[1]} s, max green {bb[2]} s, train W1 {bb[0]:.2f} s", flush=True)
+
+    def green_on_arrival(which, extra):
+        out_r, out_s = [], []
+        for g in sel:
+            if which == "n":
+                P.tram_call_extra = extra
+            else:
+                P.tram_s_call_extra = extra
+            sim, _ = offline(g, P, leads, leads_s)
+            tm = SF.tram_metrics(g[SG], sim, SF.runs(g["d3"].to_numpy())[0], SF.runs(g["d6"].to_numpy())[0])
+            k = "sg12_green_on_arrival_pct" if which == "n" else "sg11_green_on_arrival_pct"
+            out_r.append(tm.loc[k, "real"]); out_s.append(tm.loc[k, "sim"])
+        return np.mean(out_r), np.mean(out_s)
+    for which, name in (("n", "tram_call_extra"), ("s", "tram_s_call_extra")):
+        bx = None
+        for extra in range(0, 41, 2):
+            r, s = green_on_arrival(which, extra)
+            if bx is None or abs(s - r) < bx[0]:
+                bx = (abs(s - r), extra)
+        setattr(P, name, bx[1])
+        print("fitted", name, bx[1], "s", flush=True)
+    P.save(a.out)
+    print(json.dumps(json.load(open(a.out))))
+    rows = []
+    for split, files in (("train", tr_files), ("test", te_files)):
+        for f in files:
+            date, g = load_day(f)
+            sim, c = offline(g, P, leads, leads_s)
+            m = (g["sg1"] != 8).to_numpy()
+            rs_, ss_ = g[SG][m].reset_index(drop=True), sim[m].reset_index(drop=True)
+            cyc, ks = SF.cycle_metrics(rs_, ss_)
+            tm = SF.tram_metrics(g[SG], sim, SF.runs(g["d3"].to_numpy())[0], SF.runs(g["d6"].to_numpy())[0])
+            rows.append(dict(split=split, date=str(date.date()), weekday=date.day_name()[:3],
+                             cycle_real=cyc.loc["cycle_med", "real"], cycle_sim=cyc.loc["cycle_med", "sim"],
+                             ew_real=cyc.loc["ew_green_med", "real"], ew_sim=cyc.loc["ew_green_med", "sim"],
+                             ns_real=cyc.loc["ns_green_med", "real"], ns_sim=cyc.loc["ns_green_med", "sim"],
+                             ks_cycle=ks["cyc"][0], w1_cycle=ks["cyc"][1], ks_ew=ks["g_ew"][0], w1_ew=ks["g_ew"][1],
+                             ks_ns=ks["g_ns"][0], w1_ns=ks["g_ns"][1],
+                             sg12_on_arrival_real=tm.loc["sg12_green_on_arrival_pct", "real"], sg12_on_arrival_sim=tm.loc["sg12_green_on_arrival_pct", "sim"],
+                             sg11_on_arrival_real=tm.loc["sg11_green_on_arrival_pct", "real"], sg11_on_arrival_sim=tm.loc["sg11_green_on_arrival_pct", "sim"],
+                             ped_wait_med=float(np.median(c.stats["ped_wait"])) if c.stats["ped_wait"] else np.nan))
+    r = pd.DataFrame(rows)
+    Path(a.report).mkdir(parents=True, exist_ok=True)
+    r.to_csv(f"{a.report}/offline_by_day.csv", index=False)
+    pd.set_option("display.width", 250)
+    print(r.groupby("split")[["cycle_real", "cycle_sim", "ew_real", "ew_sim", "ns_real", "ns_sim", "w1_cycle", "w1_ew", "w1_ns",
+                              "sg12_on_arrival_real", "sg12_on_arrival_sim", "sg11_on_arrival_real", "sg11_on_arrival_sim"]].mean().round(2).T.to_string())
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--csv", nargs="*", default=None)
+    ap.add_argument("--train-until", default=None)
+    ap.add_argument("--train-days", nargs="*", default=None, help="per-day CSV files/globs used for calibration (multi-day mode)")
+    ap.add_argument("--test-days", nargs="*", default=None, help="per-day CSV files/globs evaluated offline (hold-out)")
+    ap.add_argument("--fit-days", type=int, default=6, help="training days sampled for the grid search")
+    ap.add_argument("--out", default=str(HERE / "controller_params.json"))
+    ap.add_argument("--report", default=str(HERE / "results" / "controller_offline"))
+    a = ap.parse_args()
+    if a.train_days:
+        main_multi(a)
+    else:
+        sys.argv = [sys.argv[0]] + sys.argv[1:]
+        main_single()
 
 
 if __name__ == "__main__":
