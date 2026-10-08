@@ -102,15 +102,16 @@ If you use this work, please cite the underlying dataset:
 
 ```bibtex
 @article{Genser2023Data,
-  author  = {Genser, Alexander and Ordonez-Hurtado, Rodrigo and
-             Rizzoli, Andrea and Leclercq, Mathieu and Knoll, Alois},
-  title   = {High-resolution urban intersection data: signal phases,
-             loop detectors, trams and pedestrians in {Z\"{u}rich}},
-  journal = {Data in Brief},
-  volume  = {48},
-  pages   = {109117},
-  year    = {2023},
-  doi     = {10.1016/j.dib.2023.109117}
+  title    = {A traffic signal and loop detector dataset of an urban intersection regulated by a fully actuated signal control system},
+  journal  = {Data in Brief},
+  volume   = {48},
+  pages    = {109117},
+  year     = {2023},
+  issn     = {2352-3409},
+  doi      = {10.1016/j.dib.2023.109117},
+  url      = {https://www.sciencedirect.com/science/article/pii/S2352340923002366},
+  author   = {Alexander Genser and Michail A. Makridis and Kaidi Yang and Lukas Abm{\"u}hl and Monica Menendez and Anastasios Kouvelas},
+  keywords = {Intelligent transportation systems, Traffic signals, Loop detectors, Signal control systems, Fully actuated systems}
 }
 ```
 

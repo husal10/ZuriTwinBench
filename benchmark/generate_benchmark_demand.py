@@ -628,9 +628,9 @@ Report as absolute values **and** relative to B1:
 
 ## Reference
 
-Genser, A., Ordonez-Hurtado, N., Rizzoli, A., Leclercq, M., & Knoll, A. (2023).
-*High-resolution urban intersection data: signal phases, loop detectors, trams
-and pedestrians in Zürich.* Data in Brief, 48, 109117.
+Genser, A., Makridis, M. A., Yang, K., Abmühl, L., Menendez, M., & Kouvelas, A. (2023).
+*A traffic signal and loop detector dataset of an urban intersection regulated by a
+fully actuated signal control system.* Data in Brief, 48, 109117.
 https://doi.org/10.1016/j.dib.2023.109117
 """
 
