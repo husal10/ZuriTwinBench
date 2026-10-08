@@ -28,7 +28,7 @@ import numpy as np, pandas as pd
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
-import data as D, sg_map, compare as C, fidelity as F
+import data as D, sg_map, compare as C, fidelity as F, controller as K, signal_fidelity as SF
 import xml.etree.ElementTree as ET
 
 TLS = "TL_C"
@@ -60,6 +60,8 @@ def write_support_files(work, dets, llen, nlinks):
     loops, pos, edges = [], {}, set()
     for d, c in dets.items():
         for k, lp in enumerate(c["loops"]):
+            if lp.get("shadow"):          # injection-only entry (shares a lane with another loop)
+                continue
             lid = LANES[lp["edge"]][lp["lane"]]
             L = llen[lid]
             p = L - c["dist_m"] if c["ref"] == "stop" else c["dist_m"]
@@ -69,7 +71,7 @@ def write_support_files(work, dets, llen, nlinks):
             loops.append(f'<inductionLoop id="{d}_{k}" lane="{lid}" pos="{p:.2f}" period="3600" file="NUL"/>')
     groutes = "".join(f'<route id="g_{e}" edges="{e}"/>' for e in sorted(edges))
     add = f"""<additional>
- <vType id="car" vClass="passenger" length="4.5" minGap="2.5" accel="2.6" decel="4.5" maxSpeed="13.89" sigma="0.3" tau="1.2"/>
+ <vType id="car" vClass="passenger" length="4.5" minGap="2.5" accel="2.6" decel="4.5" maxSpeed="13.89" sigma="0.3" tau="1.9"/>
  <vType id="bike" vClass="bicycle" length="1.8" minGap="1.0" accel="1.2" decel="3.0" maxSpeed="6.11" sigma="0.3" color="0.2,0.8,0.2" guiShape="bicycle"/>
  <vType id="tram" vClass="tram" length="36.3" width="2.65" minGap="5" accel="1.0" decel="3.0" maxSpeed="8.33" sigma="0" tau="1.5" color="1,0.8,0" guiShape="rail/railcar"/>
  <vType id="ghost_car" vClass="passenger" length="2.0" minGap="0" accel="1e-9" decel="9" maxSpeed="100" speedFactor="1" speedDev="0" sigma="0" color="0.6,0.6,0.6"/>
@@ -143,6 +145,11 @@ def build_cmd(args, work, begin):
     return cmd
 
 
+def rises_idx(col):
+    x = np.asarray(col) > 0
+    return np.where(x[1:] & ~x[:-1])[0] + 1
+
+
 def pick(rng, loops):
     w = np.array([lp["w"] for lp in loops], float)
     return int(rng.choice(len(loops), p=w / w.sum())) if w.sum() > 0 else None
@@ -190,12 +197,14 @@ def classify(g, dets, name, evs, cache):
     return out
 
 
-def schedule(g, dets, mode, seed, ordinal, pos, llen, nrows):
+def schedule(g, dets, mode, seed, ordinal, pos, llen, nrows, pt_leads=None, pt_extra=0):
     """Return ({row: [action]}, stats).  Actions are dicts consumed by run()."""
     plan, cache, stats = {}, {}, {}
+    pt_calls = []                  # advance PT requests (V2I) for the injected N->S trams
+    prng = np.random.default_rng(seed + 31 + ordinal)
     # d2 trams that follow a dwelling d1 tram are emergent in hybrid mode (not injected twice)
     emergent_d2 = set()
-    if mode == "hybrid" and dets.get("d1", {}).get("role_hybrid") == "dwell":
+    if mode != "exact" and dets.get("d1", {}).get("role_hybrid") == "dwell":
         s2 = [a for a, _ in events(g["d2"].to_numpy())]
         for a1, _ in events(g["d1"].to_numpy()):
             nxt = [x for x in s2 if a1 + 10 < x <= a1 + 150]
@@ -224,7 +233,7 @@ def schedule(g, dets, mode, seed, ordinal, pos, llen, nrows):
             lp = c["loops"][k]
             tram = lp["vtype"] == "tram"
             lane_id = LANES[lp["edge"]][lp["lane"]]
-            p = pos[(d, k)]
+            p = pos.get((d, k)) or pos[(d, max(i for i in range(k) if (d, i) in pos))]
             act = dict(det=d, k=k, lp=lp, dur=D, a=a, lane=int(lane_id.rsplit("_", 1)[1]), p=p)
             if role == "ghost":
                 gt = "ghost_tram" if tram else "ghost_car"
@@ -242,7 +251,10 @@ def schedule(g, dets, mode, seed, ordinal, pos, llen, nrows):
                 act.update(type=lp["vtype"], v=v, p0=max(0.05, p - v * 1.25), at=max(0, a - 2), rm=None, drive=True)
                 if dwell:             # stop with the tram body on the loop for the observed dwell
                     act["stop"] = (lp["edge"], p + 3.0, act["lane"], max(1, D - 9))
+            if role == "drive" and d == "d2" and pt_leads:
+                pt_calls.append(int(max(0, a + 6 - prng.choice(pt_leads) - pt_extra)))      # d3 arrival ~ d2 + 6 s
             plan.setdefault(act["at"], []).append(act)
+    stats["_pt_calls_n"] = pt_calls
     return plan, stats
 
 
@@ -270,7 +282,7 @@ def run(args):
 
     summary, nveh, t_wall, fid_days = [], 0, time.time(), []
     det_names = list(dets)
-    loop_ids = {d: [f"{d}_{k}" for k in range(len(c["loops"]))] for d, c in dets.items()}
+    loop_ids = {d: [f"{d}_{k}" for k, lp in enumerate(c["loops"]) if not lp.get("shadow")] for d, c in dets.items()}
     for date, g, missing in day_list:
         ordinal = (date - d0).days
         out_dir = Path(args.out) / date.strftime("%Y-%m-%d")
@@ -282,17 +294,78 @@ def run(args):
             traci.simulationStep(base + r0)
         g = g.reset_index(drop=True)                             # row i == second r0+i of the day
         n = len(g)
-        plan, cstats = schedule(g, dets, args.mode, args.seed, ordinal, pos, llen, n)
+        pt_leads, pt_extra = None, 0
+        if args.mode == "actuated":
+            pt_leads = json.load(open(HERE / "tram_leads.json"))["n"]
+            pt_extra = K.Params.load(args.controller).tram_call_extra
+        plan, cstats = schedule(g, dets, args.mode, args.seed, ordinal, pos, llen, n, pt_leads, pt_extra)
+        pt_calls_n = set(cstats.pop("_pt_calls_n", []))
         if cstats:
             print(f"  event classes {date.date()}: {cstats}")
         rows = g[sg_map.ALL_SG].to_dict("records")
         sig = Signals(nlinks, sgl, args.amber, args.red_yellow)
+        ctl, g_cur, g_next, calls_n, calls_s, applied = None, None, None, set(), set(), None
+        if args.mode == "actuated":
+            P = K.Params.load(args.controller)
+            P.tram_priority = not args.no_tram_priority
+            lead = json.load(open(HERE / "tram_leads.json"))
+            rng_c = np.random.default_rng(args.seed + 7 + ordinal)
+            calls_n, calls_s = pt_calls_n, set()
+            dwell_of, dwell_t0 = {}, {}
+            ctl = K.ActuatedController(P, "NS", 0)
+            called, stopped = set(), set()
+            wait_n, wait_s = {}, {}          # per simulated tram: seconds stopped at the stop line
+            LEN_N, LEN_S = llen[LANES['N_tram_in'][0]], llen[LANES['S_tram_in'][0]]
+            night_rows = (g["sg1"].to_numpy() == NIGHT_CODE)
+            applied = np.zeros((n, 12), dtype=np.int8)
+            was_night, last_obs = False, {k: False for k in ("d3", "d4", "d5", "d6")}
+
+            def ctl_step(t):
+                nonlocal was_night
+                if night_rows[min(t, n - 1)]:
+                    was_night = True
+                    return {f"sg{k}": NIGHT_CODE for k in range(1, 13)}
+                if was_night:
+                    ctl.reset(t, "EW"); was_night = False
+                # PT requests from the simulated trams themselves (V2I): N->S tram within pt_call_dist_n of the stop line;
+                # S->N tram within pt_call_dist_s once it is moving again after its dwell
+                if t in calls_n:
+                    ctl.call_tram_n(t)
+                for v in traci.edge.getLastStepVehicleIDs("N_tram_in"):
+                    sp_, dist_ = traci.vehicle.getSpeed(v), LEN_N - traci.vehicle.getLanePosition(v)
+                    wait_n.setdefault(v, 0)
+                    if dist_ < 5 and sp_ < 0.3:
+                        wait_n[v] += 1
+                    if (v not in called and dist_ <= P.pt_call_dist_n and sp_ > 1.0) or (dist_ < 5 and sp_ < 0.3):
+                        called.add(v); ctl.call_tram_n(t)          # request on approach, repeated while the tram waits at the line
+                for v in traci.edge.getLastStepVehicleIDs("S_tram_in"):
+                    sp_, dist_ = traci.vehicle.getSpeed(v), LEN_S - traci.vehicle.getLanePosition(v)
+                    wait_s.setdefault(v, 0)
+                    if dist_ < 5 and sp_ < 0.3:
+                        wait_s[v] += 1
+                    if sp_ < 0.3 and dist_ > 5:
+                        stopped.add(v)
+                        dwell_t0.setdefault(v, t)
+                        if v not in called and v in dwell_of and (t - dwell_t0[v]) >= dwell_of[v] - P.pt_s_dwell_lead:
+                            called.add(v); ctl.call_tram_s(t)       # announces itself shortly before the dwell ends                              # dwelling at the stop
+                    if (v in stopped and v not in called and dist_ <= P.pt_call_dist_s and sp_ > 0.5) or (dist_ < 5 and sp_ < 0.3):
+                        called.add(v); ctl.call_tram_s(t)           # request once the dwell is over, repeated at the line
+                for ax in ("EW", "NS"):
+                    if rng_c.random() < 1 / 50.0:
+                        ctl.ped_press(ax, t)           # >= 1 pedestrian presses per cycle (assumption, no ped data)
+                return ctl.step(t, last_obs)
+            g_next = ctl_step(0)
         sim = np.zeros((n, len(dets)), dtype=np.int8)
         sig_ok = np.zeros(n, dtype=bool)
         removals = {}
         failed = 0
         for i in range(n):
-            state = sig.state(rows[i], rows[min(i + 1, n - 1)])
+            if ctl is not None:
+                g_cur, g_next = g_next, ctl_step(i + 1)
+                applied[i, :] = [g_cur[f"sg{k}"] for k in range(1, 13)]
+                state = sig.state(g_cur, g_next)
+            else:
+                state = sig.state(rows[i], rows[min(i + 1, n - 1)])
             traci.trafficlight.setRedYellowGreenState(TLS, state)
             for vid in removals.pop(i, ()):
                 try:
@@ -307,6 +380,8 @@ def run(args):
                     traci.vehicle.add(vid, lp["route"] if act.get("drive") else "g_" + lp["edge"], typeID=act["type"],
                                       depart="now", departLane=str(act["lane"]),
                                       departPos=f"{act['p0']:.2f}", departSpeed=f"{act['v']:.2f}")
+                    if act.get("drive"):
+                        traci.vehicle.setLaneChangeMode(vid, 0)   # keep the connection-defined lane (d9/d10 lane identity)
                     if not act.get("drive"):
                         traci.vehicle.setSpeedMode(vid, 0)
                         traci.vehicle.setLaneChangeMode(vid, 0)   # ghosts must stay on their loop's lane
@@ -314,6 +389,8 @@ def run(args):
                     elif act.get("stop"):
                         e, sp, ln, du = act["stop"]
                         traci.vehicle.setStop(vid, e, pos=sp, laneIndex=ln, duration=du)
+                        if ctl is not None:
+                            dwell_of[vid] = du
                 except traci.TraCIException as ex:
                     failed += 1
                     if failed <= 3:
@@ -325,6 +402,8 @@ def run(args):
                         sim[i, k] = 1
                         break
             sig_ok[i] = traci.trafficlight.getRedYellowGreenState(TLS) == state
+            if ctl is not None:
+                last_obs = {k: bool(sim[i, det_names.index(k)]) for k in ("d3", "d4", "d5", "d6")}
             if args.progress and i % 3600 == 0:
                 print(f"  {date.date()} {i // 3600:02d}:00 veh={traci.vehicle.getIDCount():3d} wall={time.time() - t_wall:.0f}s", flush=True)
         for v in traci.vehicle.getIDList():
@@ -332,6 +411,8 @@ def run(args):
         real = g.copy()
         simdf = g.copy()
         simdf[det_names] = sim
+        if ctl is not None:
+            simdf[sg_map.ALL_SG] = applied
         simdf.insert(0, "time", [date + pd.Timedelta(seconds=r0 + int(s)) for s in range(n)])
         simdf["sg_applied_ok"] = sig_ok.astype(int)
         simdf.to_csv(out_dir / "sim_detectors.csv", index=False)
@@ -339,23 +420,57 @@ def run(args):
         rep.attrs.update(sig_state_match_pct=float(sig_ok.mean() * 100), missing_seconds=int(missing.sum()),
                          insertion_failures=failed)
         rep.to_csv(out_dir / "report.csv")
-        obs_c, sim_c = F.period_counts(real, det_names, args.period), F.period_counts(simdf.set_index(real.index), det_names, args.period)
-        fid, agg = F.evaluate(obs_c, sim_c, det_names, exclude=tuple(args.exclude))
-        fid.to_csv(out_dir / "fidelity.csv")
-        pd.Series(agg).to_csv(out_dir / "fidelity_aggregate.csv", header=["value"])
-        fid_days.append((date.date(), fid, agg, obs_c, sim_c))
-        summary.append((date.date(), rep))
+        excl = set(args.exclude)
+        if args.mode != "exact":      # injected arrivals are inputs, only emergent detectors are validation targets
+            excl |= {d for d in det_names if dets[d].get("role") == "input"}
+        wins = [("all", slice(0, n))]
+        if args.holdout_from:
+            hrow = int((pd.Timestamp(args.holdout_from) - date).total_seconds()) - r0
+            if 0 < hrow < n:
+                wins.append(("holdout", slice(hrow, n)))
         print(f"\n== {date.date()} ({args.mode}) ==")
         print(C.format_report(rep))
-        print(f"\n-- fidelity ({args.period} s periods; metrics as in the ZuriTwinBench paper) --")
-        print(F.format_fidelity(fid, agg))
+        for wname, sl in wins:
+            sfx = "" if wname == "all" else "_" + wname
+            rw, sw = real.iloc[sl], simdf.iloc[sl].set_index(real.index[sl])
+            obs_c, sim_c = F.period_counts(rw, det_names, args.period), F.period_counts(sw, det_names, args.period)
+            fid, agg = F.evaluate(obs_c, sim_c, det_names, exclude=tuple(excl))
+            fid.to_csv(out_dir / f"fidelity{sfx}.csv")
+            pd.Series(agg).to_csv(out_dir / f"fidelity_aggregate{sfx}.csv", header=["value"])
+            if wname == "all":
+                fid_days.append((date.date(), fid, agg, obs_c, sim_c))
+            print(f"\n-- detector fidelity [{wname}] ({args.period} s periods; criterion detectors: "
+                  f"{[d for d in det_names if d not in excl]}) --")
+            print(F.format_fidelity(fid, agg))
+            if ctl is not None:       # signal-timing fidelity of the closed-loop controller vs the field signals
+                m = (rw["sg1"].to_numpy() != NIGHT_CODE)
+                rs_ = rw[sg_map.ALL_SG][m].reset_index(drop=True)
+                ss_ = simdf.iloc[sl][sg_map.ALL_SG][m].reset_index(drop=True)
+                pg = SF.per_group(rs_, ss_, args.period)
+                cyc, ks = SF.cycle_metrics(rs_, ss_)
+                tm = SF.tram_metrics(rw[sg_map.ALL_SG], simdf.iloc[sl][sg_map.ALL_SG].set_index(rw.index),
+                                     rises_idx(rw["d3"]), rises_idx(rw["d6"]),
+                                     sim_waits={"n": list(wait_n.values()), "s": list(wait_s.values())} if wname == "all" else None)
+                pg.to_csv(out_dir / f"signal_per_group{sfx}.csv"); cyc.to_csv(out_dir / f"signal_cycle{sfx}.csv")
+                tm.to_csv(out_dir / f"signal_tram{sfx}.csv")
+                pd.DataFrame(ks, index=["ks", "w1_s"]).to_csv(out_dir / f"signal_cycle_ks{sfx}.csv")
+                if wname == "all":
+                    pd.DataFrame({k: pd.Series(v) for k, v in ctl.stats.items()}).to_csv(out_dir / "controller_stats.csv", index=False)
+                    pd.concat([pd.DataFrame({"kind": "N->S (sg12)", "wait_s": list(wait_n.values())}),
+                               pd.DataFrame({"kind": "S->N (sg11)", "wait_s": list(wait_s.values())})]).to_csv(out_dir / "tram_waits_sim.csv", index=False)
+                print(f"\n-- signal-timing fidelity [{wname}] (actuated controller vs field signals) --")
+                print(pg[["starts_real", "starts_sim", "dur_med_real", "dur_med_sim", "dur_ks", "dur_w1_s"]].round(2).to_string())
+                print(cyc.round(2).to_string()); print(tm.round(1).to_string())
+        summary.append((date.date(), rep))
+        if ctl is not None and ctl.stats["ped_wait"]:
+            print("pedestrian wait (assumed press times) median/p90 s:", np.median(ctl.stats["ped_wait"]).round(1), np.percentile(ctl.stats["ped_wait"], 90).round(1))
     traci.close()
     pd.concat({str(d): r for d, r in summary}).to_csv(Path(args.out) / f"report_{args.mode}.csv")
     if len(fid_days) > 1:      # pooled over all days: every detector-day is one observation
         dets_ = list(fid_days[0][1].index)
         obs_all = pd.concat([o for *_, o, _ in fid_days], ignore_index=True)
         sim_all = pd.concat([s_ for *_, s_ in fid_days], ignore_index=True)
-        pf, pa = F.evaluate(obs_all, sim_all, dets_, exclude=tuple(args.exclude))
+        pf, pa = F.evaluate(obs_all, sim_all, dets_, exclude=tuple(excl))
         pf.to_csv(Path(args.out) / "fidelity_all_days.csv")
         pd.Series(pa).to_csv(Path(args.out) / "fidelity_all_days_aggregate.csv", header=["value"])
         print(f"\n== all {len(fid_days)} days pooled (per-period series concatenated) ==")
@@ -366,7 +481,8 @@ def run(args):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--csv", nargs="+", required=True, help="CSV files / directories / globs (multi-day)")
-    ap.add_argument("--mode", choices=["exact", "hybrid"], default="exact")
+    ap.add_argument("--mode", choices=["exact", "hybrid", "actuated"], default="exact",
+                    help="exact: signals+detectors replayed; hybrid: signals replayed, arrivals injected; actuated: closed loop, own controller")
     ap.add_argument("--out", default="out")
     ap.add_argument("--from", dest="t_from", help="start timestamp, e.g. '2019-02-04 06:00:00'")
     ap.add_argument("--to", dest="t_to", help="end timestamp (exclusive)")
@@ -374,6 +490,9 @@ def main():
     ap.add_argument("--red-yellow", type=int, default=1, help="red-yellow seconds before green on sg1..sg6 (paper: 1 s)")
     ap.add_argument("--period", type=int, default=3600, help="aggregation period (s) for the fidelity metrics (paper: 3600)")
     ap.add_argument("--exclude", nargs="*", default=["d1"], help="detectors left out of the acceptance criterion (paper: d1, >50 m from the stop line)")
+    ap.add_argument("--controller", default=str(HERE / "controller_params.json"), help="calibrated controller parameters (actuated mode)")
+    ap.add_argument("--holdout-from", help="timestamp: also report fidelity on the rows from here on (parameters are calibrated before it)")
+    ap.add_argument("--no-tram-priority", action="store_true", help="actuated mode: disable PT priority")
     ap.add_argument("--tol", type=int, default=2, help="event matching tolerance in seconds")
     ap.add_argument("--gui", action="store_true")
     ap.add_argument("--delay", type=int, default=100, help="sumo-gui delay (ms/step)")

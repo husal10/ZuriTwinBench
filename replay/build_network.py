@@ -45,7 +45,8 @@ def c(f, t, fl, tl): return f'<connection from="{f}" to="{t}" fromLane="{fl+1}" 
 cons = "<connections>\n" + "\n".join([
     # Table 1 of Genser et al. (2023); logical lane 0 = right-most vehicle lane
     c("W_in","E_out",0,0),                         # sg1  W->E
-    c("N_in","W_out",0,0),                         # sg2  N->W (right turn)
+    c("N_in","W_out",0,0),                         # sg2  N->W (right turn), outer W_out lane (d10)
+    c("N_in","W_out",1,1),                         # sg2  N->W, inner W_out lane (d9) - lane split from flow conservation
     c("N_in","S_out",1,0),                         # sg3  N->S (bikes only)
     c("E_in","W_out",1,1),                         # sg4  E->W
     c("E_in","N_out",0,0),                         # sg5  E->N (right turn)

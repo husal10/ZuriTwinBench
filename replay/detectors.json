@@ -13,7 +13,9 @@
     "route": "rt_tram_NS"
    }
   ],
-  "_data": "139 events/day, ALL followed by a d2 event within 150 s; occupancy 26-46 s (median 33 s); events only 07-22 h; 60% of d2 trams are preceded by a d1 event. => trams dwelling at a stop ~220 m upstream (one line). Hybrid: a real tram stops there for the observed time, then continues; the matching d2 event is then emergent."
+  "_data": "139 events/day, ALL followed by a d2 event within 150 s; occupancy 26-46 s (median 33 s); events only 07-22 h; 60% of d2 trams are preceded by a d1 event. => trams dwelling at a stop ~220 m upstream (one line). Hybrid: a real tram stops there for the observed time, then continues; the matching d2 event is then emergent.",
+  "_modes": "PT only (tram)",
+  "role": "input"
  },
  "d2": {
   "ref": "stop",
@@ -27,7 +29,9 @@
     "vtype": "tram",
     "route": "rt_tram_NS"
    }
-  ]
+  ],
+  "_modes": "PT only (tram)",
+  "role": "input"
  },
  "d3": {
   "ref": "stop",
@@ -41,7 +45,9 @@
     "vtype": "tram",
     "route": "rt_tram_NS"
    }
-  ]
+  ],
+  "_modes": "PT only (tram)",
+  "role": "output"
  },
  "d4": {
   "ref": "stop",
@@ -51,19 +57,28 @@
    {
     "edge": "N_in",
     "lane": 0,
-    "w": 0.975,
+    "w": 0.8039,
     "vtype": "car",
     "route": "rt_car_NW"
    },
    {
     "edge": "N_in",
     "lane": 1,
-    "w": 0.025,
+    "w": 0.1717,
+    "vtype": "car",
+    "route": "rt_car_NW"
+   },
+   {
+    "edge": "N_in",
+    "lane": 1,
+    "w": 0.0244,
     "vtype": "bike",
-    "route": "rt_bike_NS"
+    "route": "rt_bike_NS",
+    "shadow": true
    }
   ],
-  "_inferred": "bike share ~2.5%: only 26/287 d8 events are not tram-linked (short 2-5 s events = bikes/MPT on the S arm), so at most ~25 N->S bikes/day pass d4."
+  "_inferred": "d4 sees MPT (sg2, N->W) and bikes (sg3, N->S). Bike share 0.0244 (~26/day): two independent estimates agree - the excess of d4 pulses during the bike-only phase (sg3 green, sg2 red: 60/h vs 52/h otherwise, ~11-26 pulses) and the 26 non-tram events at d8. The paper's ~97/day is not supported. Car lane split from flow conservation: d10 (857/day) / N->W cars (1040) = 0.824 on the outer W_out lane (d10), the rest on the inner lane (d9).",
+  "role": "input"
  },
  "d5": {
   "ref": "stop",
@@ -73,19 +88,20 @@
    {
     "edge": "E_in",
     "lane": 0,
-    "w": 0.29,
+    "w": 0.3521,
     "vtype": "car",
     "route": "rt_car_EN"
    },
    {
     "edge": "E_in",
     "lane": 1,
-    "w": 0.71,
+    "w": 0.6479,
     "vtype": "car",
     "route": "rt_car_EW"
    }
   ],
-  "_inferred": "w split: d9 (E->W lane) ~2137/day of d5 ~3016/day => 71% E->W (sg4), 29% E->N (sg5)"
+  "_inferred": "E->W share = (d9 - N->W cars on the d9 lane)/d5 = (2137-183)/3016 = 0.648; remainder E->N (sg5). Flow conservation, not measured.",
+  "role": "input"
  },
  "d6": {
   "ref": "stop",
@@ -110,7 +126,8 @@
   "classify": {
    "tram_if_green_at_end": "sg11"
   },
-  "_inferred": "sg6 = MPT, sg11 = tram only. 98% of d6 occupancies end with sg11 green (18% sg6) => PT; an event is MPT when sg6, not sg11, is green at its end."
+  "_inferred": "sg6 = MPT, sg11 = tram only. 98% of d6 occupancies end with sg11 green (18% sg6) => PT; an event is MPT when sg6, not sg11, is green at its end.",
+  "role": "output"
  },
  "d7": {
   "ref": "stop",
@@ -141,7 +158,8 @@
     -3,
     90
    ]
-  }
+  },
+  "role": "input"
  },
  "d8": {
   "ref": "exit",
@@ -177,7 +195,8 @@
     20,
     50
    ]
-  }
+  },
+  "role": "output"
  },
  "d9": {
   "ref": "exit",
@@ -192,7 +211,8 @@
     "route": "rt_car_out_W"
    }
   ],
-  "_inferred": "inner/left W_out lane (south side, E->W through): count ~2137/day ~ E->W flow"
+  "_inferred": "inner/left W_out lane (south side, E->W through): count ~2137/day ~ E->W flow",
+  "role": "output"
  },
  "d10": {
   "ref": "exit",
@@ -207,6 +227,7 @@
     "route": "rt_car_out_W"
    }
   ],
-  "_inferred": "outer/right W_out lane (north side, N->W right turn): count ~857/day ~ d4 car share"
+  "_inferred": "outer/right W_out lane (north side, N->W right turn): count ~857/day ~ d4 car share",
+  "role": "output"
  }
 }
