@@ -145,14 +145,14 @@ def load_and_correct(csv_path: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
 
 ROUTES_XML = """\
     <!-- Approach routes -->
-    <route id="N_to_S" edges="N_in jN jS S_out"/>
-    <route id="N_to_W" edges="N_in jN jW W_in"/>
-    <route id="E_to_W" edges="E_in jE jW W_in"/>
-    <route id="E_to_N" edges="E_in jE jN N_out"/>
-    <route id="S_to_N" edges="S_in jS jN N_out"/>
-    <route id="S_to_W" edges="S_in jS jW W_in"/>
-    <route id="S_to_E" edges="S_in jS jE E_out"/>
-    <route id="W_to_E" edges="W_in jW jE E_out"/>"""
+    <route id="N_to_S" edges="N_in S_out"/>
+    <route id="N_to_W" edges="N_in W_out"/>
+    <route id="E_to_W" edges="E_in W_out"/>
+    <route id="E_to_N" edges="E_in N_out"/>
+    <route id="S_to_N" edges="S_in N_out"/>
+    <route id="S_to_W" edges="S_in W_out"/>
+    <route id="S_to_E" edges="S_in E_out"/>
+    <route id="W_to_E" edges="W_in E_out"/>"""
 
 VTYPES_XML = """\
     <vType id="car"  vClass="passenger"   length="4.5" accel="2.6" decel="4.5"
@@ -258,8 +258,8 @@ def write_benchmark_trams(df_raw: pd.DataFrame, t0, out_path: Path):
              '    <vType id="tram" vClass="rail_urban" length="36.3" width="2.65"',
              '           maxSpeed="8.333" accel="1.2" decel="2.0" sigma="0.0"',
              '           color="252,230,25" guiShape="rail/city"/>',
-             '    <route id="N_to_S_tram" edges="N_tram_in N_tram_out"/>',
-             '    <route id="S_to_N_tram" edges="S_tram_in S_tram_out"/>',
+             '    <route id="N_to_S_tram" edges="N_tram_in S_tram_out"/>',
+             '    <route id="S_to_N_tram" edges="S_tram_in N_tram_out"/>',
              '']
 
     for i, t in enumerate(sg12_times):
@@ -296,10 +296,10 @@ def write_benchmark_pedestrians(df_raw: pd.DataFrame, t0, out_path: Path):
              '           maxSpeed="1.39" color="0.8,0.4,0.1"/>']
 
     routes = {
-        "sg7":  ("ped_cross_N",  "ped_N_src  ped_cross_N  ped_N_dst"),
-        "sg8":  ("ped_cross_E",  "ped_E_src  ped_cross_E  ped_E_dst"),
-        "sg9":  ("ped_cross_S",  "ped_S_src  ped_cross_S  ped_S_dst"),
-        "sg10": ("ped_cross_W",  "ped_W_src  ped_cross_W  ped_W_dst"),
+        "sg7":  ("ped_cross_sg7",  "ped_sg7_in"),    # W-arm crossing (Table 1 / Fig. 3)
+        "sg8":  ("ped_cross_sg8",  "ped_sg8_in"),    # N-arm crossing
+        "sg9":  ("ped_cross_sg9",  "ped_sg9_in"),    # E-arm crossing
+        "sg10": ("ped_cross_sg10", "ped_sg10_in"),   # S-arm crossing
     }
     for sg, (rid, edges) in routes.items():
         lines.append(f'    <route id="{rid}" edges="{edges}"/>')
@@ -324,8 +324,7 @@ def write_benchmark_pedestrians(df_raw: pd.DataFrame, t0, out_path: Path):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def write_benchmark_cfg(out_path: Path):
-    net_path   = "../simulation/zurich_intersection.net.xml"
-    add_path   = "../simulation/detectors_benchmark.add.xml"
+    net_path   = "benchmark.net.xml"
     content = f"""\
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
@@ -340,7 +339,7 @@ def write_benchmark_cfg(out_path: Path):
     sumo-gui -c benchmark/benchmark.sumocfg
 
   For RL wrapping via SUMO-RL:
-    env = SumoEnvironment(net_file='simulation/zurich_intersection.net.xml',
+    env = SumoEnvironment(net_file='benchmark/benchmark.net.xml',
                           route_file='benchmark/benchmark_flows.rou.xml',
                           additional_file='benchmark/benchmark_detectors.add.xml',
                           ...)
@@ -408,13 +407,7 @@ def write_benchmark_detectors(out_path: Path):
   D9 and D10 are ALWAYS reported separately (different lane movements).
 -->
 <additional>
-    <!-- Vehicle type definitions (needed without calibrators) -->
-    <vType id="car"  vClass="passenger" length="4.5" maxSpeed="13.889"
-           accel="2.6" decel="4.5" sigma="0.5" tau="1.2"/>
-    <vType id="bike" vClass="bicycle"   length="1.8" maxSpeed="6.111"
-           accel="1.2" decel="3.0" sigma="0.6" tau="1.0"/>
-    <vType id="tram" vClass="rail_urban" length="36.3" maxSpeed="8.333"
-           accel="1.2" decel="2.0" sigma="0.0"/>
+    <!-- Vehicle types (car, bike, tram, pedestrian) are defined in the route files. -->
 
     <!-- ── Tram detectors (North approach tram track) ──────────────────── -->
     <e1Detector id="d1"  lane="N_tram_in_0" pos="30.0"  period="900"
@@ -456,17 +449,17 @@ def write_benchmark_detectors(out_path: Path):
                 file="output/det_d10.xml" friendlyPos="true"/>
 
     <!-- ── Area detectors for RL state space (queue per lane) ──────────── -->
-    <laneAreaDetector id="q_N0" lane="N_in_0"  pos="180.0" endPos="248.0" period="5"
+    <laneAreaDetector id="q_N0" lane="N_in_0"  pos="180.0" endPos="231.0" period="5"
                       file="output/queue_N0.xml" friendlyPos="true"/>
-    <laneAreaDetector id="q_N1" lane="N_in_1"  pos="180.0" endPos="248.0" period="5"
+    <laneAreaDetector id="q_N1" lane="N_in_1"  pos="180.0" endPos="231.0" period="5"
                       file="output/queue_N1.xml" friendlyPos="true"/>
-    <laneAreaDetector id="q_E0" lane="E_in_0"  pos="30.0"  endPos="248.0" period="5"
+    <laneAreaDetector id="q_E0" lane="E_in_0"  pos="30.0"  endPos="231.0" period="5"
                       file="output/queue_E0.xml" friendlyPos="true"/>
-    <laneAreaDetector id="q_E1" lane="E_in_1"  pos="30.0"  endPos="248.0" period="5"
+    <laneAreaDetector id="q_E1" lane="E_in_1"  pos="30.0"  endPos="231.0" period="5"
                       file="output/queue_E1.xml" friendlyPos="true"/>
-    <laneAreaDetector id="q_S0" lane="S_in_0"  pos="180.0" endPos="248.0" period="5"
+    <laneAreaDetector id="q_S0" lane="S_in_0"  pos="180.0" endPos="231.0" period="5"
                       file="output/queue_S0.xml" friendlyPos="true"/>
-    <laneAreaDetector id="q_S1" lane="S_in_1"  pos="180.0" endPos="248.0" period="5"
+    <laneAreaDetector id="q_S1" lane="S_in_1"  pos="180.0" endPos="231.0" period="5"
                       file="output/queue_S1.xml" friendlyPos="true"/>
 </additional>
 """
@@ -522,7 +515,7 @@ sumo -c benchmark/benchmark.sumocfg
 # Via SUMO-RL (Python)
 from sumo_rl import SumoEnvironment
 env = SumoEnvironment(
-    net_file='simulation/zurich_intersection.net.xml',
+    net_file='benchmark/benchmark.net.xml',
     route_file='benchmark/benchmark_flows.rou.xml,benchmark/benchmark_trams.rou.xml,benchmark/benchmark_pedestrians.rou.xml',
     additional_file='benchmark/benchmark_detectors.add.xml',
     use_gui=False,

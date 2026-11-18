@@ -13,14 +13,14 @@
            maxSpeed="6.111" sigma="0.6" tau="1.0" color="0.2,0.7,0.3"/>
 
     <!-- Approach routes -->
-    <route id="N_to_S" edges="N_in jN jS S_out"/>
-    <route id="N_to_W" edges="N_in jN jW W_in"/>
-    <route id="E_to_W" edges="E_in jE jW W_in"/>
-    <route id="E_to_N" edges="E_in jE jN N_out"/>
-    <route id="S_to_N" edges="S_in jS jN N_out"/>
-    <route id="S_to_W" edges="S_in jS jW W_in"/>
-    <route id="S_to_E" edges="S_in jS jE E_out"/>
-    <route id="W_to_E" edges="W_in jW jE E_out"/>
+    <route id="N_to_S" edges="N_in S_out"/>
+    <route id="N_to_W" edges="N_in W_out"/>
+    <route id="E_to_W" edges="E_in W_out"/>
+    <route id="E_to_N" edges="E_in N_out"/>
+    <route id="S_to_N" edges="S_in N_out"/>
+    <route id="S_to_W" edges="S_in W_out"/>
+    <route id="S_to_E" edges="S_in E_out"/>
+    <route id="W_to_E" edges="W_in E_out"/>
 
     <flow id="f00000" route="N_to_S" type="car" begin="0" end="900" vehsPerHour="4" departLane="free" departSpeed="max"/>
     <flow id="f00001" route="N_to_W" type="car" begin="0" end="900" vehsPerHour="8" departLane="free" departSpeed="max"/>

@@ -5,8 +5,8 @@
     <vType id="tram" vClass="rail_urban" length="36.3" width="2.65"
            maxSpeed="8.333" accel="1.2" decel="2.0" sigma="0.0"
            color="252,230,25" guiShape="rail/city"/>
-    <route id="N_to_S_tram" edges="N_tram_in N_tram_out"/>
-    <route id="S_to_N_tram" edges="S_tram_in S_tram_out"/>
+    <route id="N_to_S_tram" edges="N_tram_in S_tram_out"/>
+    <route id="S_to_N_tram" edges="S_tram_in N_tram_out"/>
 
     <vehicle id="tns_0" type="tram" route="N_to_S_tram" depart="133.0" departPos="0" departSpeed="max"/>
     <vehicle id="tns_1" type="tram" route="N_to_S_tram" depart="1039.0" departPos="0" departSpeed="max"/>

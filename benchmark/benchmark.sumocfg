@@ -11,7 +11,7 @@
     sumo-gui -c benchmark/benchmark.sumocfg
 
   For RL wrapping via SUMO-RL:
-    env = SumoEnvironment(net_file='zurich_digital_twin/simulation/intersection.net.xml"',
+    env = SumoEnvironment(net_file='benchmark/benchmark.net.xml',
                           route_file='benchmark/benchmark_flows.rou.xml',
                           additional_file='benchmark/benchmark_detectors.add.xml',
                           ...)

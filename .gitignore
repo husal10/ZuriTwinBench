@@ -4,7 +4,8 @@ simulation/output/summary*.xml
 simulation/output/queues*.xml
 simulation/output/statistics*.xml
 simulation/output/cal_*.xml
-benchmark/output/
+benchmark/output/*
+!benchmark/output/.gitkeep
 
 # ── SUMO GUI settings ─────────────────────────────────────────────────────────
 *.settings.xml
