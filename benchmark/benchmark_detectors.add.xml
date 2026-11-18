@@ -21,13 +21,7 @@
   D9 and D10 are ALWAYS reported separately (different lane movements).
 -->
 <additional>
-    <!-- Vehicle type definitions (needed without calibrators) -->
-    <vType id="car"  vClass="passenger" length="4.5" maxSpeed="13.889"
-           accel="2.6" decel="4.5" sigma="0.5" tau="1.2"/>
-    <vType id="bike" vClass="bicycle"   length="1.8" maxSpeed="6.111"
-           accel="1.2" decel="3.0" sigma="0.6" tau="1.0"/>
-    <vType id="tram" vClass="rail_urban" length="36.3" maxSpeed="8.333"
-           accel="1.2" decel="2.0" sigma="0.0"/>
+    <!-- Vehicle types (car, bike, tram, pedestrian) are defined in the route files. -->
 
     <!-- ── Tram detectors (North approach tram track) ──────────────────── -->
     <e1Detector id="d1"  lane="N_tram_in_0" pos="30.0"  period="900"
@@ -69,16 +63,16 @@
                 file="output/det_d10.xml" friendlyPos="true"/>
 
     <!-- ── Area detectors for RL state space (queue per lane) ──────────── -->
-    <laneAreaDetector id="q_N0" lane="N_in_0"  pos="180.0" endPos="248.0" period="5"
+    <laneAreaDetector id="q_N0" lane="N_in_0"  pos="180.0" endPos="231.0" period="5"
                       file="output/queue_N0.xml" friendlyPos="true"/>
-    <laneAreaDetector id="q_N1" lane="N_in_1"  pos="180.0" endPos="248.0" period="5"
+    <laneAreaDetector id="q_N1" lane="N_in_1"  pos="180.0" endPos="231.0" period="5"
                       file="output/queue_N1.xml" friendlyPos="true"/>
-    <laneAreaDetector id="q_E0" lane="E_in_0"  pos="30.0"  endPos="248.0" period="5"
+    <laneAreaDetector id="q_E0" lane="E_in_0"  pos="30.0"  endPos="231.0" period="5"
                       file="output/queue_E0.xml" friendlyPos="true"/>
-    <laneAreaDetector id="q_E1" lane="E_in_1"  pos="30.0"  endPos="248.0" period="5"
+    <laneAreaDetector id="q_E1" lane="E_in_1"  pos="30.0"  endPos="231.0" period="5"
                       file="output/queue_E1.xml" friendlyPos="true"/>
-    <laneAreaDetector id="q_S0" lane="S_in_0"  pos="180.0" endPos="248.0" period="5"
+    <laneAreaDetector id="q_S0" lane="S_in_0"  pos="180.0" endPos="231.0" period="5"
                       file="output/queue_S0.xml" friendlyPos="true"/>
-    <laneAreaDetector id="q_S1" lane="S_in_1"  pos="180.0" endPos="248.0" period="5"
+    <laneAreaDetector id="q_S1" lane="S_in_1"  pos="180.0" endPos="231.0" period="5"
                       file="output/queue_S1.xml" friendlyPos="true"/>
 </additional>
