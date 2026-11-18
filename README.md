@@ -41,7 +41,24 @@ A GitHub Actions workflow runs on every push and pull request. It executes the f
 
 ## Citation
 
-If you use this work, please cite the underlying dataset:
+If you use ZuriTwinBench, please cite the paper that introduced it:
+
+> H. A. Idris and G. Cabri, "ZuriTwinBench: A Calibrated Open Digital Twin of a Fully-actuated Urban Intersection as Enabling Infrastructure for Smart City Traffic Management Research," *2026 34th International Conference on Enabling Technologies: Infrastructure for Collaborative Enterprises (WETICE)*, Paris, France, 2026, pp. 1-6, doi: [10.1109/WETICE70595.2026.11772342](https://doi.org/10.1109/WETICE70595.2026.11772342).
+
+```bibtex
+@inproceedings{Idris2026ZuriTwinBench,
+  author    = {Idris, Hussaini Aliyu and Cabri, Giacomo},
+  title     = {{ZuriTwinBench}: A Calibrated Open Digital Twin of a Fully-actuated Urban Intersection as Enabling Infrastructure for Smart City Traffic Management Research},
+  booktitle = {2026 34th International Conference on Enabling Technologies: Infrastructure for Collaborative Enterprises ({WETICE})},
+  address   = {Paris, France},
+  year      = {2026},
+  pages     = {1--6},
+  doi       = {10.1109/WETICE70595.2026.11772342},
+  keywords  = {Detectors; Modeling; Digital twins; Printing; Calibration; Vehicles; Measurement; Simulation; Equations; Aggregates; digital twin; traffic simulation; SUMO; GEH; loop detector; smart city; DfT WebTAG M3.1; Zurich intersection dataset}
+}
+```
+
+and the dataset it is built from:
 
 ```bibtex
 @article{Genser2023Data,
@@ -57,6 +74,8 @@ If you use this work, please cite the underlying dataset:
   keywords = {Intelligent transportation systems, Traffic signals, Loop detectors, Signal control systems, Fully actuated systems}
 }
 ```
+
+Note: the WETICE paper describes the first, single-day version of the twin. The multi-day replay and actuated twin in `replay/` extend it and correct some of its detector roles and validation design (see "Legacy first version" above).
 
 ---
 
