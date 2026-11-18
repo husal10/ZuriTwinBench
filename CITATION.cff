@@ -1,0 +1,58 @@
+cff-version: 1.2.0
+message: "If you use ZuriTwinBench, please cite the WETICE 2026 paper below and the Genser et al. (2023) dataset."
+title: "ZuriTwinBench"
+type: software
+authors:
+  - family-names: Idris
+    given-names: Hussaini Aliyu
+    affiliation: "University of Modena and Reggio Emilia"
+  - family-names: Cabri
+    given-names: Giacomo
+    affiliation: "University of Modena and Reggio Emilia"
+repository-code: "https://github.com/husal10/ZuriTwinBench"
+license: MIT
+keywords:
+  - digital twin
+  - traffic simulation
+  - SUMO
+  - GEH
+  - loop detector
+  - smart city
+preferred-citation:
+  type: conference-paper
+  title: "ZuriTwinBench: A Calibrated Open Digital Twin of a Fully-actuated Urban Intersection as Enabling Infrastructure for Smart City Traffic Management Research"
+  authors:
+    - family-names: Idris
+      given-names: Hussaini Aliyu
+    - family-names: Cabri
+      given-names: Giacomo
+  collection-title: "2026 34th International Conference on Enabling Technologies: Infrastructure for Collaborative Enterprises (WETICE)"
+  conference:
+    name: "34th International Conference on Enabling Technologies: Infrastructure for Collaborative Enterprises (WETICE)"
+    city: Paris
+    country: FR
+  year: 2026
+  start: 1
+  end: 6
+  doi: "10.1109/WETICE70595.2026.11772342"
+references:
+  - type: article
+    title: "A traffic signal and loop detector dataset of an urban intersection regulated by a fully actuated signal control system"
+    authors:
+      - family-names: Genser
+        given-names: Alexander
+      - family-names: Makridis
+        given-names: Michail A.
+      - family-names: Yang
+        given-names: Kaidi
+      - family-names: Abmühl
+        given-names: Lukas
+      - family-names: Menendez
+        given-names: Monica
+      - family-names: Kouvelas
+        given-names: Anastasios
+    journal: "Data in Brief"
+    volume: 48
+    start: 109117
+    year: 2023
+    doi: "10.1016/j.dib.2023.109117"
