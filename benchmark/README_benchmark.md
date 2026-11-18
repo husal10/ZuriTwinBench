@@ -1,14 +1,15 @@
 # Zürich Intersection — RL/TSC Benchmark Environment
 
-> **Status: legacy, single-day benchmark.** This benchmark belongs to the first version of ZuriTwinBench
-> (the WETICE 2026 paper, one day of data, 4 February 2019). It is kept because it is a ready-to-run
-> fixed-demand environment, but its demand and detector roles were built on assumptions that the later,
-> multi-day work in [`replay/`](../replay/README.md) found to be wrong (see "Known limitations" below).
+> **Status: separate from the WETICE 2026 paper, single-day, not validated.** This benchmark is **not** the benchmark or the
+> experiments described in the WETICE 2026 ZuriTwinBench paper (those use the original twin in `network/`, `simulation/` and
+> `calibration/`). It is an additional fixed-demand package built from the same single day of data (4 February 2019) and
+> it is not described or validated in that paper. It is kept because it is a ready-to-run environment, but its demand and detector
+> roles rest on assumptions that the later multi-day work in [`replay/`](../replay/README.md) found to be wrong (see "Known limitations" below).
 > For validated, multi-day replay and the actuated twin with transit signal priority, use `replay/`.
 >
 > | Part of the repository | Data | Signals | Use it for |
 > |---|---|---|---|
-> | Original twin (`network/`, `simulation/`, `calibration/`) | 1 day | SUMO actuated, calibrators on N/E/S | reproducing the WETICE 2026 paper |
+> | Original twin (`network/`, `simulation/`, `calibration/`) | 1 day | SUMO actuated, calibrators on N/E/S | the twin and experiments of the WETICE 2026 paper |
 > | **This benchmark** (`benchmark/`) | 1 day (fixed demand) | SUMO actuated (default) | a quick fixed-demand environment for signal-control experiments, with the limitations below |
 > | Replay twin (`replay/`) | 59 days, 1 s | recorded signals (exact/hybrid) or data-derived actuated controller with TSP | validated replay, closed-loop control, hold-out validation |
 
@@ -161,11 +162,13 @@ counts, and daily GEH hides hour-to-hour errors (the multi-day work uses hourly 
 
 ## Known limitations (found by the multi-day work in `replay/`)
 
+These concern the assumptions this package inherits from the original single-day twin.
+
 1. **Detector roles.** D6, D7 and D8 mostly observe trams (D7→D6 pairs 99.7 %, 98 % of D6 occupancies end
    with the tram signal sg11 green). This benchmark's demand treats D6/D7 as ~190 cars/day on the south approach
    and adds car flows to match D8, which over-represents south-approach cars. sg3 is bicycle-only, so there is no N→S car flow.
 2. **Bicycles at D4.** D4 counts motorized traffic and bicycles together; the bicycle share is a small part of it
-   (≈2 %, estimated in `replay/`), not the ≈97/day assumed in the first version.
+   (≈2 %, estimated in `replay/`), not the ≈97/day assumed in the original single-day twin.
 3. **Traffic-light link indices.** The network of this folder carries more TLS link indices than there are signal
    groups. The corrected network in `replay/net/` has exactly 12 link indices, one per signal group (sg1–sg12).
 4. **Signal-group movements.** Table 1 of Genser et al. lists sg4 = E→W and sg5 = E→N, but Fig. 3 of the same paper and the d9

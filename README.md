@@ -34,12 +34,12 @@ The repository holds three generations of work. They answer different questions 
 | Part | Folders | Data | What it is | Status |
 |---|---|---|---|---|
 | **1. Original twin** (WETICE 2026 paper) | `network/`, `simulation/`, `calibration/`, `demand/`, `build_network.py` | one day (4 Feb 2019) | SUMO model with calibrators, GEH/R² checks on that day | kept to reproduce the paper; its validation design has known problems (below) |
-| **2. Control benchmark** | `benchmark/` | the same single day, as fixed demand | ready-to-run environment for signal-control and RL experiments (S1–S3 states, R1–R3 rewards, three baselines) | legacy; runs, but inherits the limitations of part 1 (see [`benchmark/README_benchmark.md`](benchmark/README_benchmark.md)) |
+| **2. Control benchmark** (not in the paper) | `benchmark/` | the same single day, as fixed demand | additional ready-to-run environment for signal-control and RL experiments (S1–S3 states, R1–R3 rewards, three baselines); not the experiments of the WETICE paper and not validated there | separate from the paper; runs, but inherits the limitations of part 1 (see [`benchmark/README_benchmark.md`](benchmark/README_benchmark.md)) |
 | **3. Replay and actuated twin** | `replay/` | 59 days at 1 s (Jan–Feb 2019) | exact/hybrid replay of recorded signals and detectors; data-derived actuated controller with transit signal priority; hold-out validation (calibrated on January, tested on February) | maintained; use this for new work |
 
 **Why part 3 exists.** Re-analysing the record showed problems in the first version: approach counts were enforced by calibrators and then reported as validated detectors; d6, d7 and d8 were treated as car detectors although they mostly see trams; the reported R² of 0.984 compared daily totals across detectors rather than hourly accuracy; calibration and validation used the same day. Part 3 separates injected inputs from validated outputs, validates on held-out days with hourly GEH, and models the 12 signal groups with exactly 12 traffic-light link indices.
 
-**Numbers.** The "8 of 9 detectors pass" result of the WETICE paper and the "9/9, GEH < 2" fit of the benchmark are in-sample results for one day. Validation results for the multi-day twin are in `replay/results/multiday/` (hourly GEH < 5 in 99.0 % of detector-hours on the 28 February test days, with d8 and d10 overestimated by about 11 %).
+**Numbers.** The "8 of 9 detectors pass" result of the WETICE paper and the "9/9, GEH < 2" fit of the separate benchmark are in-sample results for one day. Validation results for the multi-day twin are in `replay/results/multiday/` (hourly GEH < 5 in 99.0 % of detector-hours on the 28 February test days, with d8 and d10 overestimated by about 11 %).
 
 ---
 
